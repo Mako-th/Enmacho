@@ -1,0 +1,205 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:TH09.Shell.ViewModels"
+             xmlns:v="using:TH09.Shell.Views"
+             x:Class="TH09.Shell.Views.TimelineView"
+             x:DataType="vm:TimelineViewModel">
+
+
+  <UserControl.Styles>
+    <Style Selector="Button.seg">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="10,3,10,4" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="Button.seg.on">
+      <Setter Property="BorderBrush" Value="{StaticResource Fg}" />
+      <Setter Property="Foreground" Value="{StaticResource Fg}" />
+    </Style>
+    <Style Selector="Button.mini">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="6,0,6,1" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+    <Style Selector="TextBlock.grp">
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,12,0,3" />
+    </Style>
+    <Style Selector="TextBlock.k">
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="TextBlock.val">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Opacity" Value="0.65" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel LastChildFill="True">
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}"
+            Padding="{StaticResource BandPad}">
+      <StackPanel Orientation="Horizontal" Spacing="18">
+
+        <ItemsControl ItemsSource="{Binding RoundTabs}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:TrendRoundTab">
+              <Button Classes="seg" Classes.on="{Binding IsActive}" Content="{Binding Label}"
+                      Command="{Binding $parent[ItemsControl].((vm:TimelineViewModel)DataContext).ShowRoundCommand}"
+                      CommandParameter="{Binding Index}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Classes="seg" Classes.on="{Binding IsOverlay}" Content="重ねる"
+                  Command="{Binding SetModeCommand}" CommandParameter="over" />
+          <Button Classes="seg" Classes.on="{Binding IsStacked}" Content="積む"
+                  Command="{Binding SetModeCommand}" CommandParameter="stack" />
+          <Button Classes="seg" Classes.on="{Binding IsSolo}" Content="単体"
+                  Command="{Binding SetModeCommand}" CommandParameter="solo" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Classes="seg" Classes.on="{Binding IsColorPlayer}" Content="色＝プレイヤー"
+                  Command="{Binding SetColorModeCommand}" CommandParameter="player" />
+          <Button Classes="seg" Classes.on="{Binding IsColorStatus}" Content="色＝ステータス"
+                  Command="{Binding SetColorModeCommand}" CommandParameter="status" />
+        </StackPanel>
+
+      </StackPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Top" Padding="{StaticResource BandPad}"
+            IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+    </Border>
+
+    <Border DockPanel.Dock="Top" Padding="16,0,16,6" IsVisible="{Binding HasRound}">
+      <TextBlock Classes="note" Text="{Binding CountNote}" TextWrapping="Wrap" />
+    </Border>
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}"
+            Padding="16,4,16,10" IsVisible="{Binding HasLabels}">
+      <ItemsControl ItemsSource="{Binding LabelGroups}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:TrendLabelGroup">
+            <StackPanel MinWidth="150" Margin="0,0,26,6">
+              <TextBlock Text="{Binding Name}" Classes="grp" Margin="0,0,0,3" />
+              <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:KvRow">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,1">
+                      <TextBlock Grid.Column="0" Text="{Binding K}" Classes="k" Margin="0,0,12,0" />
+                      <TextBlock Grid.Column="1" Text="{Binding V}" Classes="val" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
+    <Grid ColumnDefinitions="240,*">
+
+      <ScrollViewer Grid.Column="0" Padding="12,10">
+        <StackPanel>
+
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <Button Classes="mini" Content="全部つける"
+                    Command="{Binding SetGroupCommand}" CommandParameter="&#x09;1" />
+            <Button Classes="mini" Content="全部はずす"
+                    Command="{Binding SetGroupCommand}" CommandParameter="&#x09;0" />
+          </StackPanel>
+
+          <ItemsControl ItemsSource="{Binding Groups}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TrendGroup">
+                <StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <TextBlock Text="{Binding Name}" Classes="grp" VerticalAlignment="Center" />
+                    <Button Classes="mini" Content="全" VerticalAlignment="Center"
+                            Command="{Binding $parent[ItemsControl].((vm:TimelineViewModel)DataContext).SetGroupCommand}"
+                            CommandParameter="{Binding OnArg}" />
+                    <Button Classes="mini" Content="無" VerticalAlignment="Center"
+                            Command="{Binding $parent[ItemsControl].((vm:TimelineViewModel)DataContext).SetGroupCommand}"
+                            CommandParameter="{Binding OffArg}" />
+                  </StackPanel>
+                  <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:TrendSeries">
+                        <CheckBox IsChecked="{Binding IsOn}" Padding="6,0,0,0" MinHeight="0">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border Width="14" Height="3" VerticalAlignment="Center"
+                                    Background="{Binding Swatch}" />
+                            <TextBlock Text="{Binding Label}" />
+                            <TextBlock Text="{Binding RangeText}" Classes="k" FontSize="10"
+                                       VerticalAlignment="Center" />
+                          </StackPanel>
+                        </CheckBox>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Text="マーカー" Classes="grp" />
+          <ItemsControl ItemsSource="{Binding Events}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TrendEventRow">
+                <CheckBox IsChecked="{Binding IsOn}" Padding="6,0,0,0" MinHeight="0">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="10" Height="10" VerticalAlignment="Center"
+                            Background="{Binding Swatch}" />
+                    <TextBlock Text="{Binding Name}" />
+                    <TextBlock Text="{Binding CountText}" Classes="k" FontSize="10"
+                               VerticalAlignment="Center" />
+                  </StackPanel>
+                </CheckBox>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Text="座布団（帯）" Classes="grp" />
+          <ItemsControl ItemsSource="{Binding Bands}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TrendBandRow">
+                <CheckBox IsChecked="{Binding IsOn}" Padding="6,0,0,0" MinHeight="0">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="10" Height="10" VerticalAlignment="Center"
+                            Background="{Binding Swatch}" />
+                    <TextBlock Text="{Binding Name}" />
+                    <TextBlock Text="{Binding CountText}" Classes="k" FontSize="10"
+                               VerticalAlignment="Center" />
+                  </StackPanel>
+                </CheckBox>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+        </StackPanel>
+      </ScrollViewer>
+
+      <ScrollViewer Grid.Column="1" Padding="0,6,12,12">
+        <v:TimelineCanvas Name="Canvas" Model="{Binding}" Revision="{Binding Revision}" />
+      </ScrollViewer>
+
+    </Grid>
+  </DockPanel>
+</UserControl>

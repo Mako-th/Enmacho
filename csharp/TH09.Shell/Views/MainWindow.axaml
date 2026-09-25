@@ -1,0 +1,1018 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:TH09.Shell.ViewModels"
+        xmlns:views="using:TH09.Shell.Views"
+        x:Class="TH09.Shell.Views.MainWindow"
+        x:DataType="vm:ShellViewModel"
+        Width="1280" Height="800"
+        MinWidth="{x:Static views:ShellLayout.MainMinWidth}"
+        MinHeight="{x:Static views:ShellLayout.MainMinHeight}"
+        Title="{Binding WindowTitle}">
+
+  <Window.Resources>
+    <DataTemplate x:Key="ScanRunOptionTemplate" x:DataType="vm:ScanRunOption">
+      <StackPanel Orientation="Vertical">
+        <TextBlock Text="{Binding Label}" />
+        <TextBlock Classes="note" Text="{Binding Reason}"
+                   IsVisible="{Binding !CanChoose}" />
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate x:Key="ScanOrderOptionTemplate" x:DataType="vm:ScanOrderOption">
+      <TextBlock Text="{Binding Label}" />
+    </DataTemplate>
+  </Window.Resources>
+
+  <Window.Styles>
+    <Style Selector="TextBlock.slabel">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="Button.scanchip">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="7,1" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Margin" Value="0,0,4,3" />
+      <Setter Property="Opacity" Value="0.45" />
+    </Style>
+    <Style Selector="Button.scanchip.on">
+      <Setter Property="Background" Value="{StaticResource Raised}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+      <Setter Property="Foreground" Value="{StaticResource Fg}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Opacity" Value="1.0" />
+    </Style>
+    <Style Selector="Button.scanchip.on:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Raised}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+    </Style>
+    <Style Selector="Button.sbulk">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="7,1" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Margin" Value="4,0,0,0" />
+    </Style>
+  </Window.Styles>
+
+  <Window.DataTemplates>
+    <DataTemplate DataType="vm:PlayTabViewModel"><views:PlayTabView /></DataTemplate>
+    <DataTemplate DataType="vm:HistoryTabViewModel"><views:HistoryTabView /></DataTemplate>
+    <DataTemplate DataType="vm:ReplayTabViewModel"><views:ReplayTabView /></DataTemplate>
+    <DataTemplate DataType="vm:StatsTabViewModel"><views:StatsTabView /></DataTemplate>
+    <DataTemplate DataType="vm:HitWindowViewModel"><views:HitWindowView /></DataTemplate>
+    <DataTemplate DataType="vm:TimelineViewModel"><views:TimelineView /></DataTemplate>
+  </Window.DataTemplates>
+
+  <Grid RowDefinitions="Auto,*">
+
+    <Border Name="DriveBar" Grid.Row="0"
+            BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}"
+            Background="{StaticResource Band}" Padding="10,6">
+      <DockPanel LastChildFill="True">
+      <StackPanel Name="DriveButtons" DockPanel.Dock="Left"
+                  Orientation="Horizontal" VerticalAlignment="Center"
+                  Spacing="{x:Static views:ShellLayout.DriveButtonGap}">
+        <Button Name="MonitorToggle" Classes="bar"
+                MinWidth="{x:Static views:ShellLayout.DriveMonitorWidth}"
+                IsEnabled="{Binding Drive.CanToggleMonitor}"
+                Command="{Binding Drive.ToggleMonitorCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Panel Width="11" Height="11" VerticalAlignment="Center">
+              <Ellipse Name="MonitorOnGlyph" IsVisible="{Binding Drive.IsMonitorRunning}"
+                       Width="11" Height="11" Fill="{StaticResource RecordingRed}" />
+              <Rectangle Name="MonitorOffGlyph" IsVisible="{Binding !Drive.IsMonitorRunning}"
+                         Width="9" Height="9" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Fill="{Binding $parent[Button].Foreground}" />
+            </Panel>
+            <TextBlock Text="{Binding Drive.MonitorText}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Name="StreamToggle" Classes="bar"
+                MinWidth="{x:Static views:ShellLayout.DriveStreamWidth}"
+                Command="{Binding ToggleStreamPanelCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Panel Width="11" Height="11" VerticalAlignment="Center">
+              <Ellipse Name="StreamOnGlyph" IsVisible="{Binding IsStreamPanelOpen}"
+                       Width="11" Height="11" Fill="{StaticResource RecordingRed}" />
+              <Rectangle Name="StreamOffGlyph" IsVisible="{Binding !IsStreamPanelOpen}"
+                         Width="9" Height="9" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Fill="{Binding $parent[Button].Foreground}" />
+            </Panel>
+            <TextBlock Text="{Binding StreamPanelText}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+      <StackPanel Name="DriveButtonsRight" DockPanel.Dock="Right"
+                  Orientation="Horizontal" VerticalAlignment="Center"
+                  Spacing="{x:Static views:ShellLayout.DriveButtonGap}">
+        <Button Name="ScanSettings" Classes="bar"
+                MinWidth="{x:Static views:ShellLayout.DriveScanWidth}"
+                Command="{Binding Drive.OpenScanCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Path Width="12" Height="13" Stretch="Uniform" VerticalAlignment="Center"
+                  Data="M 0,1 L 6,6.5 L 0,12 Z M 6,1 L 12,6.5 L 6,12 Z"
+                  Fill="{Binding $parent[Button].Foreground}" />
+            <TextBlock Text="走査" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Name="AppSettings" Classes="bar"
+                MinWidth="{x:Static views:ShellLayout.DriveSettingsWidth}"
+                Command="{Binding Drive.OpenSettingsCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Path Width="13" Height="13" Stretch="Uniform" VerticalAlignment="Center"
+                  Data="M 10.80,6.50 L 12.56,7.83 L 11.72,9.84 L 9.54,9.54 L 9.54,9.54 L 9.84,11.72 L 7.83,12.56 L 6.50,10.80 L 6.50,10.80 L 5.17,12.56 L 3.16,11.72 L 3.46,9.54 L 3.46,9.54 L 1.28,9.84 L 0.44,7.83 L 2.20,6.50 L 2.20,6.50 L 0.44,5.17 L 1.28,3.16 L 3.46,3.46 L 3.46,3.46 L 3.16,1.28 L 5.17,0.44 L 6.50,2.20 L 6.50,2.20 L 7.83,0.44 L 9.84,1.28 L 9.54,3.46 L 9.54,3.46 L 11.72,3.16 L 12.56,5.17 L 10.80,6.50 Z M 8.40,6.50 L 8.04,7.62 L 7.09,8.31 L 5.91,8.31 L 4.96,7.62 L 4.60,6.50 L 4.96,5.38 L 5.91,4.69 L 7.09,4.69 L 8.04,5.38 Z"
+                  Fill="{Binding $parent[Button].Foreground}" />
+            <TextBlock Text="設定" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+        <DockPanel Name="ScanRunning" DockPanel.Dock="Left" LastChildFill="True"
+                   Margin="8,0,0,0"
+                   VerticalAlignment="Center" IsVisible="{Binding Drive.IsScanRunning}">
+          <Panel Width="11" Height="11" Margin="0,0,6,0"
+                 DockPanel.Dock="Left" VerticalAlignment="Center">
+            <Ellipse Name="ScanOnGlyph" IsVisible="{Binding Drive.IsScanRunning}"
+                     Width="11" Height="11" Fill="{StaticResource RecordingRed}" />
+          </Panel>
+          <Button Name="ScanStop" Content="停止" DockPanel.Dock="Right"
+                  VerticalAlignment="Center" Command="{Binding Drive.StopScanCommand}" />
+          <ProgressBar Name="ScanProgressBar" Width="120" Height="10" Margin="0,0,6,0"
+                       DockPanel.Dock="Right" VerticalAlignment="Center"
+                       IsVisible="{Binding Drive.HasScanProgress}"
+                       Minimum="0" Maximum="{Binding Drive.ScanProgressTotal}"
+                       Value="{Binding Drive.ScanProgressCurrent}" />
+          <TextBlock Name="ScanStatusLabel" Text="{Binding Drive.ScanStatusText}"
+                     Margin="0,0,6,0" VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+        <TextBlock Name="DriveLastResult" Classes="note" Text="{Binding Drive.LastResultText}"
+                   VerticalAlignment="Center"
+                   Margin="8,0,0,0" TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Row="1">
+
+    <TabControl Name="Tabs"
+                ItemsSource="{Binding Tabs}"
+                SelectedItem="{Binding SelectedTab}"
+                IsVisible="{Binding !IsDetailOpen}">
+      <TabControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:TabViewModelBase">
+          <TextBlock Text="{Binding Title}" />
+        </DataTemplate>
+      </TabControl.ItemTemplate>
+    </TabControl>
+
+    <Border Name="DetailHost" IsVisible="{Binding IsDetailOpen}">
+      <views:ReplayDetailView Name="DetailView" DataContext="{Binding Detail}" />
+    </Border>
+
+    </Grid>
+
+    <Border Name="ScanForm" Grid.Row="0" Grid.RowSpan="2"
+            IsVisible="{Binding Drive.IsScanFormOpen}" Background="{StaticResource Scrim}">
+      <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
+              CornerRadius="4" Padding="20" MaxWidth="760" MaxHeight="720"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Orientation="Vertical" Spacing="10">
+            <TextBlock Text="{Binding Drive.ScanFormHeader}" FontWeight="Bold" />
+
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="10"
+                  RowSpacing="6">
+              <TextBlock Grid.Row="0" Grid.Column="0" Classes="slabel" Text="走り方"
+                         VerticalAlignment="Top" Margin="0,6,0,0" />
+              <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Vertical" Spacing="3">
+                <ComboBox Name="ScanRunBox" MinWidth="260" HorizontalAlignment="Left"
+                          ItemsSource="{Binding Drive.Scan.RunOptions}"
+                          SelectedItem="{Binding Drive.Scan.SelectedRun}"
+                          ItemTemplate="{StaticResource ScanRunOptionTemplate}">
+                  <ComboBox.Styles>
+                    <Style Selector="ComboBoxItem" x:DataType="vm:ScanRunOption">
+                      <Setter Property="IsEnabled" Value="{Binding CanChoose}" />
+                    </Style>
+                  </ComboBox.Styles>
+                </ComboBox>
+                <TextBlock Name="ScanRunBlocked" Classes="slabel" TextWrapping="Wrap"
+                           Text="{Binding Drive.Scan.BlockedRunsText}"
+                           IsVisible="{Binding Drive.Scan.ShowBlockedRuns}" />
+              </StackPanel>
+              <TextBlock Grid.Row="1" Grid.Column="0" Classes="slabel"
+                         Text="対象にするフォルダ" VerticalAlignment="Top" Margin="0,4,0,0" />
+              <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <ListBox Grid.Column="0" Name="ScanDirectories" MinHeight="72" MaxHeight="120"
+                         ItemsSource="{Binding Drive.Scan.Directories}"
+                         SelectedItem="{Binding Drive.Scan.SelectedDirectory}" />
+                <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="4"
+                            VerticalAlignment="Top">
+                  <Button Name="ScanAddDirectory" Classes="bar" Content="追加…" MinWidth="80"
+                          Click="OnAddScanDirectory" />
+                  <Button Name="ScanRemoveDirectory" Classes="bar" Content="外す" MinWidth="80"
+                          Command="{Binding Drive.Scan.RemoveDirectoryCommand}"
+                          IsEnabled="{Binding Drive.Scan.CanRemoveDirectory}" />
+                  <TextBlock Classes="slabel" Text="空なら全部" />
+                </StackPanel>
+              </Grid>
+            </Grid>
+
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+              <TextBlock Grid.Column="0" Classes="slabel" Text="モード" />
+              <ItemsControl Grid.Column="1" Name="ScanModeChips"
+                            ItemsSource="{Binding Drive.Scan.ModeChips}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ScanPickChip">
+                    <Button Classes="scanchip" Classes.on="{Binding IsSelected}"
+                            Content="{Binding Label}"
+                            Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Drive.Scan.ToggleChipCommand}"
+                            CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                <Button Classes="sbulk" Content="全部"
+                        Command="{Binding Drive.Scan.SelectAllModesCommand}" />
+                <Button Classes="sbulk" Content="解除"
+                        Command="{Binding Drive.Scan.ClearModesCommand}" />
+              </StackPanel>
+            </Grid>
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+              <TextBlock Grid.Column="0" Classes="slabel" Text="対戦区分" />
+              <ItemsControl Grid.Column="1" Name="ScanMatchKindChips"
+                            ItemsSource="{Binding Drive.Scan.MatchKindChips}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ScanPickChip">
+                    <Button Classes="scanchip" Classes.on="{Binding IsSelected}"
+                            Content="{Binding Label}"
+                            Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Drive.Scan.ToggleChipCommand}"
+                            CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                <Button Classes="sbulk" Content="全部"
+                        Command="{Binding Drive.Scan.SelectAllMatchKindsCommand}" />
+                <Button Classes="sbulk" Content="解除"
+                        Command="{Binding Drive.Scan.ClearMatchKindsCommand}" />
+              </StackPanel>
+            </Grid>
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+              <TextBlock Grid.Column="0" Classes="slabel" Text="難易度" />
+              <ItemsControl Grid.Column="1" Name="ScanDifficultyChips"
+                            ItemsSource="{Binding Drive.Scan.DifficultyChips}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ScanPickChip">
+                    <Button Classes="scanchip" Classes.on="{Binding IsSelected}"
+                            Content="{Binding Label}"
+                            Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Drive.Scan.ToggleChipCommand}"
+                            CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                <Button Classes="sbulk" Content="全部"
+                        Command="{Binding Drive.Scan.SelectAllDifficultiesCommand}" />
+                <Button Classes="sbulk" Content="解除"
+                        Command="{Binding Drive.Scan.ClearDifficultiesCommand}" />
+              </StackPanel>
+            </Grid>
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+              <TextBlock Grid.Column="0" Classes="slabel" Text="キャラ" />
+              <ItemsControl Grid.Column="1" Name="ScanCharacterChips"
+                            ItemsSource="{Binding Drive.Scan.CharacterChips}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ScanPickChip">
+                    <Button Classes="scanchip" Classes.on="{Binding IsSelected}"
+                            Content="{Binding Label}"
+                            Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Drive.Scan.ToggleChipCommand}"
+                            CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                <Button Classes="sbulk" Content="全部"
+                        Command="{Binding Drive.Scan.SelectAllCharactersCommand}" />
+                <Button Classes="sbulk" Content="解除"
+                        Command="{Binding Drive.Scan.ClearCharactersCommand}" />
+              </StackPanel>
+            </Grid>
+
+            <WrapPanel Orientation="Horizontal">
+              <CheckBox Name="ScanOwnOnly" Content="自分のリプレイだけ" Margin="0,0,16,0"
+                        IsChecked="{Binding Drive.Scan.OwnOnly}" />
+              <CheckBox Name="ScanNoRecurse" Content="フォルダは直下だけ" Margin="0,0,16,0"
+                        IsChecked="{Binding Drive.Scan.NoRecurse}" />
+              <CheckBox Name="ScanBackup" Content="走る前に控えを取る" Margin="0,0,16,0"
+                        IsChecked="{Binding Drive.Scan.Backup}" />
+              <CheckBox Name="ScanDropOldBackups" Content="前の回の控えを消す"
+                        IsChecked="{Binding Drive.Scan.DropOldBackups}" />
+            </WrapPanel>
+
+            <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="10"
+                  RowSpacing="6">
+              <TextBlock Grid.Row="0" Grid.Column="0" Classes="slabel" Text="最小ステージ数" />
+              <TextBox Grid.Row="0" Grid.Column="1" Name="ScanMinStages" Watermark="空なら絞らない"
+                       Text="{Binding Drive.Scan.MinStagesText}" />
+              <TextBlock Grid.Row="0" Grid.Column="2" Classes="slabel" Text="対象の上限本数" />
+              <TextBox Grid.Row="0" Grid.Column="3" Name="ScanMaxCount" Watermark="空なら上限なし"
+                       Text="{Binding Drive.Scan.MaxCountText}" />
+              <TextBlock Grid.Row="1" Grid.Column="0" Classes="slabel" Text="総時間の上限（分）" />
+              <TextBox Grid.Row="1" Grid.Column="1" Name="ScanMaxMinutes" Watermark="空なら上限なし"
+                       Text="{Binding Drive.Scan.MaxMinutesText}" />
+              <TextBlock Grid.Row="1" Grid.Column="2" Classes="slabel"
+                         Text="この版以上の Layer 0 は飛ばす" />
+              <TextBox Grid.Row="1" Grid.Column="3" Name="ScanMinRecordVersion" Watermark="空なら飛ばさない"
+                       Text="{Binding Drive.Scan.MinRecordVersionText}" />
+            </Grid>
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+              <TextBlock Grid.Column="0" Classes="slabel" Text="処理順" />
+              <ComboBox Grid.Column="1" Name="ScanOrderBox" MinWidth="220"
+                        HorizontalAlignment="Left"
+                        ItemsSource="{Binding Drive.Scan.OrderOptions}"
+                        SelectedItem="{Binding Drive.Scan.SelectedOrder}"
+                        ItemTemplate="{StaticResource ScanOrderOptionTemplate}" />
+            </Grid>
+
+            <StackPanel Orientation="Vertical" Spacing="6">
+              <CheckBox Name="ScanHitWindowsFromConfig" Content="被弾窓は設定と同じ（config.json）"
+                        IsChecked="{Binding Drive.Scan.HitWindowsFromConfig}" />
+              <StackPanel Name="ScanHitWindowOverride" Orientation="Vertical" Spacing="6"
+                          Margin="20,0,0,0"
+                          IsEnabled="{Binding !Drive.Scan.HitWindowsFromConfig}">
+                <WrapPanel Orientation="Horizontal">
+                  <CheckBox Name="ScanHitWindows" Content="被弾窓を取る" Margin="0,0,16,0"
+                            IsChecked="{Binding Drive.Scan.HitWindows}" />
+                  <CheckBox Name="ScanHitWindowQuick"
+                            Content="クイックカードアタックも窓の起点にする"
+                            IsChecked="{Binding Drive.Scan.HitWindowQuick}" />
+                </WrapPanel>
+                <Grid ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="10">
+                  <TextBlock Grid.Column="0" Classes="slabel" Text="窓の前（tick）" />
+                  <TextBox Grid.Column="1" Name="ScanHitWindowBefore"
+                           Text="{Binding Drive.Scan.HitWindowBeforeText}" />
+                  <TextBlock Grid.Column="2" Classes="slabel" Text="窓の後（tick）" />
+                  <TextBox Grid.Column="3" Name="ScanHitWindowAfter"
+                           Text="{Binding Drive.Scan.HitWindowAfterText}" />
+                </Grid>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                  <TextBlock Grid.Column="0" Classes="slabel" Text="被弾窓を取るモード" />
+                  <ItemsControl Grid.Column="1" Name="ScanHitWindowScopes"
+                                ItemsSource="{Binding Drive.Scan.HitWindowScopes}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ScanScopeChip">
+                        <CheckBox Content="{Binding Label}" IsChecked="{Binding IsOn}"
+                                  Margin="0,0,12,0" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Grid>
+              </StackPanel>
+            </StackPanel>
+
+            <DockPanel LastChildFill="False">
+              <Button Name="ImportExisting" Classes="bar" Content="既存Replay一括登録" DockPanel.Dock="Left"
+                      Command="{Binding Drive.RequestImportCommand}"
+                      IsEnabled="{Binding Drive.CanImport}" />
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                <Button Name="ScanPlan" Classes="bar" Content="予定を見る" MinWidth="110"
+                        Command="{Binding Drive.PlanScanCommand}" />
+                <Button Name="ScanStart" Classes="bar" Content="走査を始める" MinWidth="120"
+                        Command="{Binding Drive.RequestScanRunCommand}"
+                        IsEnabled="{Binding Drive.CanStartScan}" />
+                <Button Name="ScanClose" Classes="bar" Content="閉じる" MinWidth="80"
+                        Command="{Binding Drive.CloseScanCommand}" />
+              </StackPanel>
+            </DockPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Border>
+
+    <Border Name="SettingsForm" Grid.Row="0" Grid.RowSpan="2"
+            IsVisible="{Binding Drive.IsSettingsFormOpen}" Background="{StaticResource Scrim}">
+      <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
+              CornerRadius="4" Padding="20" MaxWidth="760" MaxHeight="720"
+              MinWidth="620" MinHeight="400"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <DockPanel LastChildFill="True">
+
+          <StackPanel DockPanel.Dock="Top" Orientation="Vertical" Spacing="4" Margin="0,0,0,6">
+            <TextBlock Text="{Binding Drive.Settings.Header}" FontWeight="Bold" />
+            <TextBlock Classes="slabel" Text="{Binding Drive.Settings.ConfigPathText}"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Vertical" Spacing="8" Margin="0,10,0,0">
+            <TextBlock Name="SettingsSaveResult" Classes="label" Text="{Binding Drive.Settings.SaveResultText}"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding Drive.Settings.HasSaveResult}" />
+            <TextBlock Name="SettingsNotes" Classes="note" Text="{Binding Drive.Settings.NotesText}"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding Drive.Settings.HasNotes}" />
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+              <Button Name="SettingsSave" Classes="bar" Content="保存" MinWidth="90"
+                      Command="{Binding Drive.Settings.SaveCommand}" />
+              <Button Name="SettingsClose" Classes="bar" Content="閉じる" MinWidth="80"
+                      Command="{Binding Drive.CloseSettingsCommand}" />
+            </StackPanel>
+          </StackPanel>
+
+          <TabControl Name="SettingsTabs">
+
+            <TabItem Name="SettingsTabRecord" Header="記録">
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Vertical" Spacing="10" Margin="0,10,0,0">
+
+                  <WrapPanel Orientation="Horizontal">
+                    <CheckBox Name="SetRecordReplayPlayback" Content="リプレイの再生も記録する"
+                              IsChecked="{Binding Drive.Settings.RecordReplayPlayback}" />
+                  </WrapPanel>
+
+                  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="10"
+                        RowSpacing="6">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="slabel" Text="監視を切り替えるキー" />
+                    <TextBox Grid.Row="0" Grid.Column="1" Name="SetRecordReplayToggleKey"
+                             Text="{Binding Drive.Settings.RecordReplayToggleKey}" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="SetToggleKeyNote" Classes="slabel"
+                               TextWrapping="Wrap" Text="{Binding Drive.Settings.ToggleKeyNote}"
+                               IsVisible="{Binding Drive.Settings.HasToggleKeyNote}" />
+                  </Grid>
+
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="tickフック" />
+                    <ComboBox Grid.Column="1" Name="SetTickHook" MinWidth="140"
+                              HorizontalAlignment="Left"
+                              SelectedIndex="{Binding Drive.Settings.TickHookIndex}">
+                      <ComboBoxItem Content="自動" />
+                      <ComboBoxItem Content="ON" />
+                      <ComboBoxItem Content="OFF" />
+                    </ComboBox>
+                  </Grid>
+
+                  <CheckBox Name="SetAutoMonitorOnGame"
+                            Content="花映塚を見つけたら監視を自動で入り切りする"
+                            IsChecked="{Binding Drive.Settings.AutoMonitorOnGame}" />
+
+                  <CheckBox Name="SetWatchReplaysWithMonitor"
+                            Content="監視を ON にしたとき Replay保存監視も一緒に入り切りする"
+                            IsChecked="{Binding Drive.Settings.WatchReplaysWithMonitor}" />
+                  <CheckBox Name="SetBackupKeepOne"
+                            Content="控えは「完成した 1 つ」だけ残す（未完成の控えは消す）"
+                            IsChecked="{Binding Drive.Settings.BackupKeepOne}" />
+
+                  <TextBlock Classes="slabel"
+                             Text="自分の名前（複数可。1 つも無いと「自分のリプレイ」の判定をしません）" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <ListBox Grid.Column="0" Name="SetOwnPlayerNames" Height="90"
+                             ItemsSource="{Binding Drive.Settings.OwnPlayerNames}"
+                             SelectedIndex="{Binding Drive.Settings.SelectedOwnPlayerNameIndex}" />
+                    <Button Grid.Column="1" Name="SetOwnPlayerNameRemove" Classes="bar" Content="外す"
+                            VerticalAlignment="Top" MinWidth="80"
+                            IsEnabled="{Binding Drive.Settings.CanRemoveOwnPlayerName}"
+                            Command="{Binding Drive.Settings.RemoveOwnPlayerNameCommand}" />
+                  </Grid>
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <TextBox Grid.Column="0" Name="SetOwnPlayerNameDraft"
+                             Text="{Binding Drive.Settings.OwnPlayerNameDraft}" />
+                    <Button Grid.Column="1" Name="SetOwnPlayerNameAdd" Classes="bar" Content="足す" MinWidth="80"
+                            Command="{Binding Drive.Settings.AddOwnPlayerNameCommand}" />
+                  </Grid>
+                  <TextBlock Name="SetOwnPlayerNameNote" Classes="slabel" TextWrapping="Wrap"
+                             Text="{Binding Drive.Settings.OwnPlayerNameNote}"
+                             IsVisible="{Binding Drive.Settings.HasOwnPlayerNameNote}" />
+                  <TextBlock Classes="slabel" TextWrapping="Wrap"
+                             Text="登録済みのリプレイには、既存Replay一括登録をやり直すと効きます。" />
+
+                  <TextBlock Classes="slabel" Text="ゲームのフォルダ" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Name="SetGameDir" TextWrapping="Wrap"
+                               VerticalAlignment="Center"
+                               Text="{Binding Drive.Settings.GameDirDisplayText}" />
+                    <Button Grid.Column="1" Name="SettingsPickGameDir" Classes="bar" Content="選ぶ…"
+                            MinWidth="80" Click="OnPickGameDir" />
+                  </Grid>
+                  <TextBlock Name="SetGameDirNote" Classes="slabel" TextWrapping="Wrap"
+                             Text="{Binding Drive.Settings.GameDirNote}"
+                             IsVisible="{Binding Drive.Settings.HasGameDirNote}" />
+
+                  <TextBlock Classes="slabel" Text="ユーザー側のデータ" />
+                  <TextBlock Name="SetUserDataDir" TextWrapping="Wrap"
+                             Text="{Binding Drive.Settings.UserDataDirDisplayText}" />
+
+                  <TextBlock Classes="slabel" Text="追加の置き場（複数可）" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <ListBox Grid.Column="0" Name="SetExtraReplayDirs" Height="70"
+                             ItemsSource="{Binding Drive.Settings.ExtraReplayDirs}"
+                             SelectedIndex="{Binding Drive.Settings.SelectedExtraReplayDirIndex}" />
+                    <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="6">
+                      <Button Name="SettingsAddExtraReplayDir" Classes="bar" Content="足す…"
+                              MinWidth="80" Click="OnAddExtraReplayDir" />
+                      <Button Name="SetExtraReplayDirRemove" Classes="bar" Content="外す"
+                              MinWidth="80"
+                              IsEnabled="{Binding Drive.Settings.CanRemoveExtraReplayDir}"
+                              Command="{Binding Drive.Settings.RemoveExtraReplayDirCommand}" />
+                    </StackPanel>
+                  </Grid>
+
+                  <TextBlock Classes="slabel" TextWrapping="Wrap"
+                             Text="リプレイの登録は、この 3 つ（ゲームのフォルダ・ユーザー側のデータ・追加の置き場）の配下を全部見ます。" />
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+
+            <TabItem Name="SettingsTabHitWindow" Header="被弾窓">
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Vertical" Spacing="10" Margin="0,10,0,0">
+
+                  <WrapPanel Orientation="Horizontal">
+                    <CheckBox Name="SetHitWindows" Content="被弾窓を取る" Margin="0,0,16,0"
+                              IsChecked="{Binding Drive.Settings.HitWindows}" />
+                    <CheckBox Name="SetHitWindowQuick" Content="クイックカードアタックも窓の起点にする"
+                              IsChecked="{Binding Drive.Settings.HitWindowQuick}" />
+                  </WrapPanel>
+
+                  <Grid ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="窓の前（tick）" />
+                    <TextBox Grid.Column="1" Name="SetHitWindowBefore"
+                             Text="{Binding Drive.Settings.HitWindowBeforeText}" />
+                    <TextBlock Grid.Column="2" Classes="slabel" Text="窓の後（tick）" />
+                    <TextBox Grid.Column="3" Name="SetHitWindowAfter"
+                             Text="{Binding Drive.Settings.HitWindowAfterText}" />
+                  </Grid>
+
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="被弾窓を取るモード" />
+                    <ItemsControl Grid.Column="1" Name="SetHitWindowScopes"
+                                  ItemsSource="{Binding Drive.Settings.HitWindowScopes}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SettingScopeChoice">
+                          <CheckBox Content="{Binding Label}" IsChecked="{Binding IsOn}"
+                                    Margin="0,0,12,0" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+
+            <TabItem Name="SettingsTabHistory" Header="履歴">
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Vertical" Spacing="10" Margin="0,10,0,0">
+                  <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto"
+                        ColumnSpacing="10" RowSpacing="6">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="slabel"
+                               Text="中断・リプレイの履歴を残す件数" />
+                    <TextBox Grid.Row="0" Grid.Column="1" Name="SetHistoryRetentionAborted"
+                             IsEnabled="{Binding !Drive.Settings.HistoryRetentionAbortedUnlimited}"
+                             Text="{Binding Drive.Settings.HistoryRetentionAbortedText}" />
+                    <CheckBox Grid.Row="0" Grid.Column="2" Name="SetHistoryRetentionAbortedUnlimited"
+                              Content="上限なし"
+                              IsChecked="{Binding Drive.Settings.HistoryRetentionAbortedUnlimited}" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="slabel"
+                               Text="完走の履歴を残す件数" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Name="SetHistoryRetentionCompleted"
+                             IsEnabled="{Binding !Drive.Settings.HistoryRetentionCompletedUnlimited}"
+                             Text="{Binding Drive.Settings.HistoryRetentionCompletedText}" />
+                    <CheckBox Grid.Row="1" Grid.Column="2" Name="SetHistoryRetentionCompletedUnlimited"
+                              Content="上限なし"
+                              IsChecked="{Binding Drive.Settings.HistoryRetentionCompletedUnlimited}" />
+                  </Grid>
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+
+            <TabItem Name="SettingsTabStats" Header="統計">
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Vertical" Spacing="10" Margin="0,10,0,0">
+
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="統計に出す区分" />
+                    <ItemsControl Grid.Column="1" Name="SetStatsItems"
+                                  ItemsSource="{Binding Drive.Settings.StatsItems}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SettingStatsChoice">
+                          <CheckBox Content="{Binding Label}" IsChecked="{Binding IsShown}"
+                                    Margin="0,0,12,0" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="プレイタブに出す項目" />
+                    <ItemsControl Grid.Column="1" Name="SetPlayTabItems"
+                                  ItemsSource="{Binding Drive.Settings.PlayTabItems}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SettingCompareChoice">
+                          <CheckBox Content="{Binding Label}" IsChecked="{Binding IsShown}"
+                                    Margin="0,0,12,0" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+
+                  <TextBlock Classes="slabel" Text="要約カード・内訳表の列（並び・表示・区切り）" />
+                  <ItemsControl Name="SetStatsPages" ItemsSource="{Binding Drive.Settings.StatsPages}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:SettingColumnPage">
+                        <Button Classes="scanchip" Classes.on="{Binding IsCurrent}"
+                                Content="{Binding Label}"
+                                Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Drive.Settings.SelectStatsPageCommand}"
+                                CommandParameter="{Binding}" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <ListBox Grid.Column="0" Name="SetStatsColumns" Height="330"
+                             ItemsSource="{Binding Drive.Settings.StatsColumns}"
+                             SelectedIndex="{Binding Drive.Settings.SelectedColumnIndex}">
+                      <ListBox.Resources>
+                        <x:Double x:Key="CheckBoxMinHeight">20</x:Double>
+                      </ListBox.Resources>
+                      <ListBox.Styles>
+                        <Style Selector="ListBoxItem">
+                          <Setter Property="Padding" Value="6,0" />
+                          <Setter Property="MinHeight" Value="0" />
+                        </Style>
+                        <Style Selector="ListBoxItem CheckBox">
+                          <Setter Property="MinHeight" Value="0" />
+                          <Setter Property="Height" Value="20" />
+                        </Style>
+                      </ListBox.Styles>
+                      <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SettingColumnEntry">
+                          <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                            <Rectangle Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
+                                       Height="1" Fill="{StaticResource SettingsSeparator}" Margin="0,2,0,3"
+                                       IsVisible="{Binding IsSeparator}" />
+                            <Rectangle Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
+                                       Height="2" Fill="{StaticResource SettingsHeading}" Margin="0,6,0,4"
+                                       IsVisible="{Binding IsHeading}" />
+                            <CheckBox Grid.Row="1" Grid.Column="0" Name="SetStatsColumnShown"
+                                      MinWidth="0" MinHeight="0" Padding="0" Margin="0,1,6,1"
+                                      IsVisible="{Binding IsItem}"
+                                      IsChecked="{Binding IsShown}" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Label}"
+                                       FontWeight="{Binding RowWeight}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="1" Grid.Column="2" Classes="note" Text="{Binding Where}"
+                                       Margin="10,0,0,0"
+                                       VerticalAlignment="Center" />
+                          </Grid>
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="6" MinWidth="130">
+                      <Button Name="SetStatsColumnUp" Content="上へ ▲"
+                              HorizontalAlignment="Stretch"
+                              IsEnabled="{Binding Drive.Settings.CanMoveColumnUp}"
+                              Command="{Binding Drive.Settings.MoveColumnUpCommand}" />
+                      <Button Name="SetStatsColumnDown" Content="下へ ▼"
+                              HorizontalAlignment="Stretch"
+                              IsEnabled="{Binding Drive.Settings.CanMoveColumnDown}"
+                              Command="{Binding Drive.Settings.MoveColumnDownCommand}" />
+                      <Button Name="SetStatsColumnAddSeparator" Content="区切りを足す"
+                              HorizontalAlignment="Stretch"
+                              IsEnabled="{Binding Drive.Settings.CanAddSeparator}"
+                              Command="{Binding Drive.Settings.AddColumnSeparatorCommand}" />
+                      <Button Name="SetStatsColumnRemoveSeparator" Content="区切りを消す"
+                              HorizontalAlignment="Stretch"
+                              IsEnabled="{Binding Drive.Settings.CanRemoveSeparator}"
+                              Command="{Binding Drive.Settings.RemoveColumnSeparatorCommand}" />
+                      <Button Name="SetStatsColumnReset" Content="このページを既定に戻す"
+                              HorizontalAlignment="Stretch"
+                              Command="{Binding Drive.Settings.ResetColumnsCommand}" />
+                    </StackPanel>
+                  </Grid>
+
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="選んだ区切りの名前" />
+                    <TextBox Grid.Column="1" Name="SetStatsSeparatorName"
+                             IsEnabled="{Binding Drive.Settings.CanRenameSeparator}"
+                             Text="{Binding Drive.Settings.SelectedSeparatorName}" />
+                  </Grid>
+
+                  <TextBlock Name="SetStatsColumnsNote" Classes="slabel" TextWrapping="Wrap"
+                             Text="{Binding Drive.Settings.StatsColumnsNoteText}" />
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+
+            <TabItem Name="SettingsTabStream" Header="配信">
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Vertical" Spacing="10" Margin="0,10,0,0">
+
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="配信パネルに出す項目" />
+                    <ItemsControl Grid.Column="1" Name="SetStreamPanelItems"
+                                  ItemsSource="{Binding Drive.Settings.StreamPanelItems}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SettingCompareChoice">
+                          <CheckBox Content="{Binding Label}" IsChecked="{Binding IsShown}"
+                                    Margin="0,0,12,0" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+
+                  <TextBlock Name="SettingsStreamWhere" Classes="slabel" TextWrapping="Wrap"
+                             Text="窓の大きさ・背景色・字の大きさ・常に手前・枠なしは、ここでも、配信パネルの窓を右クリックしても変えられます。後から保存した方が残ります。" />
+
+                  <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto"
+                        ColumnSpacing="10" RowSpacing="6">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="slabel" Text="窓の幅（px）" />
+                    <TextBox Grid.Row="0" Grid.Column="1" Name="SetStreamWidth"
+                             Text="{Binding Drive.Settings.StreamWidthText}" />
+                    <TextBlock Grid.Row="0" Grid.Column="2" Classes="slabel" Text="窓の高さ（px）" />
+                    <TextBox Grid.Row="0" Grid.Column="3" Name="SetStreamHeight"
+                             Text="{Binding Drive.Settings.StreamHeightText}" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="slabel" Text="字の大きさ（倍率）" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Name="SetStreamFontScale"
+                             Text="{Binding Drive.Settings.StreamFontScaleText}" />
+                    <TextBlock Grid.Row="1" Grid.Column="2" Classes="slabel" Text="背景色" />
+                    <ComboBox Grid.Row="1" Grid.Column="3" Name="SetStreamBackground"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding Drive.Settings.StreamBackgrounds}"
+                              SelectedIndex="{Binding Drive.Settings.StreamBackgroundIndex}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:StreamPanelBackgroundChoice">
+                          <TextBlock Text="{Binding Label}" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </Grid>
+
+                  <WrapPanel Orientation="Horizontal">
+                    <CheckBox Name="SetStreamTopmost" Margin="0,0,16,0"
+                              Content="常に手前（★排他フルスクリーンでは危険）"
+                              IsChecked="{Binding Drive.Settings.StreamTopmost}" />
+                    <CheckBox Name="SetStreamBorderless" Content="枠なし表示（ドラッグで移動）"
+                              IsChecked="{Binding Drive.Settings.StreamBorderless}" />
+                  </WrapPanel>
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+
+            <TabItem Name="SettingsTabTargets" Header="目標">
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Vertical" Spacing="8" Margin="0,10,0,0">
+
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="モード" />
+                    <ItemsControl Grid.Column="1" Name="SetTargetModes"
+                                  ItemsSource="{Binding Drive.Settings.TargetModes}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SettingTargetChip">
+                          <Button Classes="scanchip" Classes.on="{Binding IsCurrent}"
+                                  Content="{Binding Label}"
+                                  Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Drive.Settings.SelectTargetModeCommand}"
+                                  CommandParameter="{Binding}" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="難易度" />
+                    <ItemsControl Grid.Column="1" Name="SetTargetDifficulties"
+                                  ItemsSource="{Binding Drive.Settings.TargetDifficulties}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SettingTargetChip">
+                          <Button Classes="scanchip" Classes.on="{Binding IsCurrent}"
+                                  Content="{Binding Label}"
+                                  Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Drive.Settings.SelectTargetDifficultyCommand}"
+                                  CommandParameter="{Binding}" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="自キャラ" />
+                    <ItemsControl Grid.Column="1" Name="SetTargetCharacters"
+                                  ItemsSource="{Binding Drive.Settings.TargetCharacters}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SettingTargetChip">
+                          <Button Classes="scanchip" Classes.on="{Binding IsCurrent}"
+                                  Content="{Binding Label}"
+                                  Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Drive.Settings.SelectTargetCharacterCommand}"
+                                  CommandParameter="{Binding}" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10"
+                        IsVisible="{Binding Drive.Settings.HasTargetStages}">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="面" />
+                    <ItemsControl Grid.Column="1" Name="SetTargetStages"
+                                  ItemsSource="{Binding Drive.Settings.TargetStages}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SettingTargetChip">
+                          <Button Classes="scanchip" Classes.on="{Binding IsCurrent}"
+                                  Content="{Binding Label}"
+                                  Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Drive.Settings.SelectTargetStageCommand}"
+                                  CommandParameter="{Binding}" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Grid>
+
+                  <TextBlock Name="SetTargetWhere" FontWeight="Bold"
+                             Text="{Binding Drive.Settings.TargetWhereText}" />
+
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8"
+                        IsVisible="{Binding Drive.Settings.HasTargetClearBonus}">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="面のクリアボーナス" />
+                    <TextBox Grid.Column="1" Name="SetTargetClearBonus" MinHeight="0" Padding="4,1"
+                             Text="{Binding Drive.Settings.TargetClearBonusText}" />
+                    <Button Grid.Column="2" Name="SetTargetClear" Content="この面を空にする"
+                            MinHeight="0" Padding="8,2" Margin="8,0,0,0"
+                            Command="{Binding Drive.Settings.ClearTargetPageCommand}" />
+                  </Grid>
+
+                  <Grid ColumnDefinitions="78,*,*" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Classes="slabel" Text="ラウンド" />
+                    <TextBlock Grid.Column="1" Classes="slabel" Text="Target" />
+                    <TextBlock Grid.Column="2" Classes="slabel" Text="WR" />
+                  </Grid>
+                  <ItemsControl Name="SetTargetRows" ItemsSource="{Binding Drive.Settings.TargetRows}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:SettingTargetRow">
+                        <Grid ColumnDefinitions="78,*,*" RowDefinitions="Auto,Auto"
+                              ColumnSpacing="8" Margin="0,0,0,3">
+                          <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Label}"
+                                     VerticalAlignment="Center" />
+                          <TextBox Grid.Row="0" Grid.Column="1" Name="SetTargetValue"
+                                   MinHeight="0" Padding="4,1" Text="{Binding TargetText}" />
+                          <TextBox Grid.Row="0" Grid.Column="2" Name="SetTargetWrValue"
+                                   MinHeight="0" Padding="4,1" Text="{Binding WrText}" />
+                          <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="note"
+                                     Text="{Binding Hint}" IsVisible="{Binding HasHint}"
+                                     Margin="0,1,0,0" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <TextBlock Name="SetTargetNote" Classes="slabel" TextWrapping="Wrap"
+                             Text="{Binding Drive.Settings.TargetNoteText}" />
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+
+          </TabControl>
+        </DockPanel>
+      </Border>
+    </Border>
+
+
+    <Border Name="ScanConfirm" Grid.Row="0" Grid.RowSpan="2"
+            IsVisible="{Binding Drive.IsScanConfirmOpen}" Background="{StaticResource Scrim}">
+      <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
+              CornerRadius="4" Padding="20" MaxWidth="560"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Orientation="Vertical" Spacing="12">
+          <TextBlock Text="{Binding Drive.ScanConfirmHeader}" FontWeight="Bold" />
+          <TextBlock Classes="note" Text="{Binding Drive.ScanConfirmSummary}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding Drive.ScanConfirmText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Name="ScanConfirmYes" Content="はい" MinWidth="80"
+                    Command="{Binding Drive.ConfirmScanCommand}" />
+            <Button Name="ScanConfirmNo" Content="いいえ" MinWidth="80"
+                    Command="{Binding Drive.CancelScanCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border Name="ScanPlanWindow" Grid.Row="0" Grid.RowSpan="2"
+            IsVisible="{Binding Drive.IsScanPlanOpen}" Background="{StaticResource Scrim}">
+      <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
+              CornerRadius="4" Padding="20" MaxWidth="560"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Orientation="Vertical" Spacing="12">
+          <TextBlock Text="{Binding Drive.ScanPlanHeader}" FontWeight="Bold" />
+          <StackPanel Orientation="Vertical" Spacing="4" IsVisible="{Binding !Drive.ScanPlanFailed}">
+            <TextBlock Text="{Binding Drive.ScanPlanTargetLine}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Drive.ScanPlanHoursLine}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Drive.ScanPlanFilesLine}" TextWrapping="Wrap" />
+          </StackPanel>
+          <TextBlock Classes="note" Text="{Binding Drive.ScanPlanFailureText}" TextWrapping="Wrap"
+                     IsVisible="{Binding Drive.ScanPlanFailed}" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Name="ScanPlanClose" Content="閉じる" MinWidth="80"
+                    Command="{Binding Drive.CloseScanPlanCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border Name="ImportConfirm" Grid.Row="0" Grid.RowSpan="2"
+            IsVisible="{Binding Drive.IsImportConfirmOpen}" Background="{StaticResource Scrim}">
+      <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
+              CornerRadius="4" Padding="20" MaxWidth="520"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Orientation="Vertical" Spacing="12">
+          <TextBlock Text="{Binding Drive.ImportConfirmHeader}" FontWeight="Bold" />
+          <TextBlock Text="{Binding Drive.ImportConfirmText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Name="ImportConfirmYes" Content="はい" MinWidth="80"
+                    Command="{Binding Drive.ConfirmImportCommand}" />
+            <Button Name="ImportConfirmNo" Content="いいえ" MinWidth="80"
+                    Command="{Binding Drive.CancelImportCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border Name="MonitorStopConfirm" Grid.Row="0" Grid.RowSpan="2"
+            IsVisible="{Binding Drive.IsMonitorStopConfirmOpen}" Background="{StaticResource Scrim}">
+      <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
+              CornerRadius="4" Padding="20" MaxWidth="520"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Orientation="Vertical" Spacing="12">
+          <TextBlock Text="{Binding Drive.MonitorStopConfirmHeader}" FontWeight="Bold" />
+          <TextBlock Text="{Binding Drive.MonitorStopConfirmText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Name="MonitorStopConfirmYes" Content="はい" MinWidth="80"
+                    Command="{Binding Drive.ConfirmMonitorStopCommand}" />
+            <Button Name="MonitorStopConfirmNo" Content="いいえ" MinWidth="80"
+                    Command="{Binding Drive.CancelMonitorStopCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border Name="FirstRunDbConfirm" Grid.Row="0" Grid.RowSpan="2"
+            IsVisible="{Binding Drive.IsFirstRunDbOpen}" Background="{StaticResource Scrim}">
+      <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
+              CornerRadius="4" Padding="20" MaxWidth="560"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Orientation="Vertical" Spacing="12">
+          <TextBlock Text="{Binding Drive.FirstRunDbHeader}" FontWeight="Bold" />
+          <TextBlock Text="{Binding Drive.FirstRunDbText}" TextWrapping="Wrap" />
+          <TextBlock Classes="note" Text="{Binding Drive.FirstRunDbPathText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Name="FirstRunDbYes" Content="作って登録する" MinWidth="80"
+                    Command="{Binding Drive.ConfirmFirstRunDbCommand}" />
+            <Button Name="FirstRunDbLater" Content="後で" MinWidth="80"
+                    Command="{Binding Drive.DeferFirstRunDbCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+  </Grid>
+</Window>

@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>$(Th09TargetFramework)</TargetFramework>
+    <RuntimeIdentifier>$(Th09RuntimeIdentifier)</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>TH09.Launch</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <Target Name="Th09GenerateDriveExeName" BeforeTargets="BeforeCompile">
+    <PropertyGroup>
+      <Th09DriveExeNameFile>$(IntermediateOutputPath)Th09DriveExeName.g.cs</Th09DriveExeNameFile>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)" Condition="!Exists('$(IntermediateOutputPath)')" />
+    <ItemGroup>
+      <Th09DriveExeNameLine Remove="@(Th09DriveExeNameLine)" />
+      <Th09DriveExeNameLine Include="namespace TH09.Launch%3B" />
+      <Th09DriveExeNameLine Include="internal static partial class DriveExecutable" />
+      <Th09DriveExeNameLine Include="{" />
+      <Th09DriveExeNameLine Include="    internal const string GeneratedFileName = &quot;$(Th09DriveAssemblyName).exe&quot;%3B" />
+      <Th09DriveExeNameLine Include="}" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(Th09DriveExeNameFile)" Lines="@(Th09DriveExeNameLine)"
+                       Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(Th09DriveExeNameFile)" />
+      <FileWrites Include="$(Th09DriveExeNameFile)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

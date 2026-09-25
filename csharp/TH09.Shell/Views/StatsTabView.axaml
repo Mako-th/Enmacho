@@ -1,0 +1,856 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:TH09.Shell.ViewModels"
+             xmlns:data="using:TH09.Shell.Data"
+             xmlns:views="using:TH09.Shell.Views"
+             x:Class="TH09.Shell.Views.StatsTabView"
+             x:DataType="vm:StatsTabViewModel">
+
+
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="Back" Command="{Binding GoUpCommand}" />
+    <KeyBinding Gesture="Alt+Left" Command="{Binding GoBackCommand}" />
+    <KeyBinding Gesture="Alt+Right" Command="{Binding GoForwardCommand}" />
+  </UserControl.KeyBindings>
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Opacity" Value="0.65" />
+    </Style>
+    <Style Selector="TextBlock.num">
+      <Setter Property="TextAlignment" Value="Right" />
+    </Style>
+    <Style Selector="TextBlock.cell">
+      <Setter Property="Margin" Value="{StaticResource CellPad}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.cur">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.head">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="Margin" Value="{StaticResource HeadPad}" />
+    </Style>
+    <Style Selector="Button.head.on TextBlock.headline">
+      <Setter Property="Opacity" Value="1.0" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.headline">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="TextBlock.mark">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="TextBlock.band">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+      <Setter Property="Margin" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Button.segment">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0,0,0,2" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Padding" Value="12,3,12,4" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="Button.segment.on">
+      <Setter Property="BorderBrush" Value="{StaticResource Fg}" />
+      <Setter Property="Foreground" Value="{StaticResource Fg}" />
+    </Style>
+    <Style Selector="Button.crumb">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="4,1" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="Button.crumb.on">
+      <Setter Property="Foreground" Value="{StaticResource Fg}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.aggbar">
+      <Setter Property="BorderThickness" Value="2,0,0,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+    </Style>
+    <Style Selector="Border.cardgroup">
+      <Setter Property="BorderThickness" Value="2,0,0,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+      <Setter Property="Margin" Value="12,0,0,0" />
+      <Setter Property="Padding" Value="12,0,0,0" />
+    </Style>
+    <Style Selector="Border.cardgroup.first">
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Border.card">
+      <Setter Property="Padding" Value="7,5,11,6" />
+      <Setter Property="Margin" Value="3,0" />
+      <Setter Property="MinWidth" Value="118" />
+    </Style>
+    <Style Selector="TextBlock.cardkey">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="StackPanel.grouprow">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="StackPanel.grouprow.bandodd">
+      <Setter Property="Background" Value="{StaticResource GroupBand}" />
+    </Style>
+    <Style Selector="ToggleButton.chip">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+      <Setter Property="Padding" Value="{StaticResource CellPad}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Margin" Value="8,0" />
+      <Setter Property="Opacity" Value="0.75" />
+    </Style>
+    <Style Selector="ToggleButton.chip:checked">
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+      <Setter Property="Foreground" Value="{StaticResource Fg}" />
+      <Setter Property="Opacity" Value="1.0" />
+    </Style>
+    <Style Selector="ToggleButton.chip:checked /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Raised}" />
+    </Style>
+    <Style Selector="ToggleButton.fhead">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Opacity" Value="0.8" />
+    </Style>
+    <Style Selector="ToggleButton.fhead:checked">
+      <Setter Property="Opacity" Value="1.0" />
+    </Style>
+    <Style Selector="TextBlock.fmark">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Width" Value="12" />
+    </Style>
+    <Style Selector="TextBlock.flabel">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Width" Value="72" />
+    </Style>
+    <Style Selector="Button.charchip">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="7,1" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Margin" Value="0,0,4,3" />
+      <Setter Property="Opacity" Value="0.45" />
+    </Style>
+    <Style Selector="Button.charchip.on">
+      <Setter Property="Background" Value="{StaticResource Raised}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+      <Setter Property="Foreground" Value="{StaticResource Fg}" />
+      <Setter Property="Opacity" Value="1.0" />
+    </Style>
+    <Style Selector="Button.fbulk">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="7,1" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Margin" Value="4,0,0,0" />
+      <Setter Property="Opacity" Value="0.75" />
+    </Style>
+    <Style Selector="TextBlock.tcap">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+      <Setter Property="Margin" Value="0,4,0,2" />
+    </Style>
+    <Style Selector="TextBlock.fhint">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="8,0,0,0" />
+    </Style>
+    <Style Selector="Button.mxcell">
+      <Setter Property="Padding" Value="4,2" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.mxcell.self">
+      <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+    </Style>
+    <Style Selector="Button.mxcell TextBlock">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="Button.mxcell.mxhead TextBlock">
+      <Setter Property="Opacity" Value="0.75" />
+    </Style>
+    <Style Selector="Button.mxcell.rowhead TextBlock">
+      <Setter Property="TextAlignment" Value="Left" />
+      <Setter Property="Opacity" Value="1.0" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel LastChildFill="True">
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}" Padding="16,8,16,0">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <ItemsControl Grid.Column="0" ItemsSource="{Binding Sections}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:StatsSectionTab">
+              <Button Classes="segment" Classes.on="{Binding IsActive}" Content="{Binding Label}"
+                      Command="{Binding $parent[ItemsControl].((vm:StatsTabViewModel)DataContext).ShowSectionCommand}"
+                      CommandParameter="{Binding Section}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Grid.Column="1" Classes="note" Text="{Binding CountText}" VerticalAlignment="Center"
+                   Margin="0,0,10,6" />
+        <Button Grid.Column="2" Name="StatsReload" Content="読み直す"
+                Command="{Binding ReloadCommand}" Margin="0,0,0,6" />
+      </Grid>
+    </Border>
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}"
+            Background="{StaticResource Band}" Padding="0,4,0,4">
+      <StackPanel>
+        <ToggleButton Classes="fhead" IsChecked="{Binding IsFilterOpen}"
+                      HorizontalAlignment="Left" Margin="16,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Classes="fmark" Text="▶" IsVisible="{Binding !IsFilterOpen}" />
+            <TextBlock Classes="fmark" Text="▼" IsVisible="{Binding IsFilterOpen}" />
+            <TextBlock Classes="label" Text="絞り込み" VerticalAlignment="Center" />
+            <TextBlock Classes="note" Text="{Binding FilterSummary}"
+                       VerticalAlignment="Center" />
+          </StackPanel>
+        </ToggleButton>
+        <StackPanel Margin="0,2,16,4" IsVisible="{Binding IsFilterOpen}">
+          <Grid ColumnDefinitions="Auto,*,Auto" Margin="16,2,0,0">
+            <TextBlock Grid.Column="0" Classes="flabel" Text="自キャラ" />
+            <ItemsControl Grid.Column="1" ItemsSource="{Binding SelfChips}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:StatsCharChip">
+                  <Button Classes="charchip" Classes.on="{Binding IsSelected}"
+                          Content="{Binding Label}"
+                          Command="{Binding $parent[ItemsControl].((vm:StatsTabViewModel)DataContext).ToggleCharCommand}"
+                          CommandParameter="{Binding}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+              <Button Classes="fbulk" Content="全部" Command="{Binding SelectAllSelfCommand}" />
+              <Button Classes="fbulk" Content="解除" Command="{Binding ClearSelfCommand}" />
+            </StackPanel>
+          </Grid>
+          <Grid ColumnDefinitions="Auto,*,Auto" Margin="16,2,0,0">
+            <TextBlock Grid.Column="0" Classes="flabel" Text="相手キャラ" />
+            <ItemsControl Grid.Column="1" ItemsSource="{Binding FoeChips}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:StatsCharChip">
+                  <Button Classes="charchip" Classes.on="{Binding IsSelected}"
+                          Content="{Binding Label}"
+                          Command="{Binding $parent[ItemsControl].((vm:StatsTabViewModel)DataContext).ToggleCharCommand}"
+                          CommandParameter="{Binding}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+              <Button Classes="fbulk" Content="全部" Command="{Binding SelectAllFoeCommand}" />
+              <Button Classes="fbulk" Content="解除" Command="{Binding ClearFoeCommand}" />
+              <TextBlock Classes="fhint" Text="{Binding FoeHint}"
+                         IsVisible="{Binding FoeHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+          </Grid>
+          <Grid ColumnDefinitions="Auto,Auto,*" Margin="16,2,0,0">
+            <TextBlock Grid.Column="0" Classes="flabel" Text="タグ" />
+            <Button Grid.Column="1" Classes="charchip on" Content="{Binding UntaggedText}"
+                    IsEnabled="False" />
+            <TextBlock Grid.Column="2" Classes="fhint" Text="{Binding TagNoteText}" />
+          </Grid>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}" Padding="16,6">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" Margin="0,0,8,0"
+                    VerticalAlignment="Center">
+          <Button Classes="crumb" Content="←" Command="{Binding GoBackCommand}"
+                  ToolTip.Tip="1 つ前の行き先へ戻る（Alt+←）" />
+          <Button Classes="crumb" Content="→" Command="{Binding GoForwardCommand}"
+                  ToolTip.Tip="1 つ先の行き先へ進む（Alt+→）" />
+        </StackPanel>
+        <ItemsControl Grid.Column="1" ItemsSource="{Binding Crumbs}" VerticalAlignment="Center">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="data:StatsCrumb">
+              <StackPanel Orientation="Horizontal">
+                <Button Classes="crumb" Classes.on="{Binding IsCurrent}" Content="{Binding Label}"
+                        IsEnabled="{Binding !IsCurrent}"
+                        Command="{Binding $parent[ItemsControl].((vm:StatsTabViewModel)DataContext).GoToDepthCommand}"
+                        CommandParameter="{Binding Depth}" />
+                <TextBlock Text="›" Opacity="0.4" VerticalAlignment="Center"
+                           IsVisible="{Binding !IsCurrent}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Grid.Column="3" Classes="note" Text="{Binding HistoryNoteText}"
+                   VerticalAlignment="Center" Margin="8,0" TextWrapping="NoWrap" />
+        <ToggleButton Grid.Column="4" Classes="chip" Content="全組み合わせ表"
+                      IsChecked="{Binding MatrixOn}" IsVisible="{Binding CanShowMatrix}"
+                      VerticalAlignment="Center" />
+        <ToggleButton Grid.Column="5" Classes="chip"
+                      Content="{Binding RecordsToggleText}"
+                      IsChecked="{Binding RecordsOn}" IsVisible="{Binding CanShowRecords}"
+                      VerticalAlignment="Center" />
+        <CheckBox Grid.Column="6" Content="他人のリプレイも含める" IsChecked="{Binding IncludeForeign}" />
+      </Grid>
+    </Border>
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}"
+            Background="{StaticResource Cushion1}" Padding="{StaticResource BandPad}"
+            IsVisible="{Binding HasCards}">
+      <ItemsControl ItemsSource="{Binding Cards}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <views:RowRuledWrapPanel RowGap="10" RuleBrush="{StaticResource Line}" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="data:StatsCardGroup">
+            <Border Classes="cardgroup" Classes.first="{Binding !HasDivider}">
+              <ItemsControl ItemsSource="{Binding Cards}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="data:StatsCard">
+                    <Border Classes="card">
+                      <StackPanel>
+                        <TextBlock Classes="cardkey" Text="{Binding Key}" />
+                        <TextBlock Classes="value" Text="{Binding Value}" />
+                        <TextBlock Classes="note" Text="{Binding Note}"
+                                   IsVisible="{Binding HasNote}" />
+                        <TextBlock Classes="note" Text="{Binding Source}"
+                                   IsVisible="{Binding HasSource}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}"
+            Padding="16,6" IsVisible="{Binding HasFixed}">
+      <ItemsControl ItemsSource="{Binding Fixed}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="data:StatsFixed">
+            <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
+              <TextBlock Classes="label" Text="{Binding Key}"
+                         VerticalAlignment="Center" Margin="0,0,6,0" />
+              <TextBlock Text="{Binding Value}" VerticalAlignment="Center" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{StaticResource Line}"
+            Background="{StaticResource Band}" Padding="0,4,0,4">
+      <StackPanel>
+        <ToggleButton Classes="fhead" IsChecked="{Binding IsNotesOpen}"
+                      HorizontalAlignment="Left" Margin="16,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Classes="fmark" Text="▶" IsVisible="{Binding !IsNotesOpen}" />
+            <TextBlock Classes="fmark" Text="▼" IsVisible="{Binding IsNotesOpen}" />
+            <TextBlock Classes="label" Text="この画面の数字について"
+                       VerticalAlignment="Center" />
+            <TextBlock Classes="note" Text="{Binding NotesSummary}"
+                       VerticalAlignment="Center" />
+          </StackPanel>
+        </ToggleButton>
+        <StackPanel IsVisible="{Binding IsNotesOpen}" Margin="28,2,16,4">
+          <ItemsControl ItemsSource="{Binding Notes}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Classes="note" Text="{Binding}" TextWrapping="Wrap"
+                           Margin="0,0,0,2" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Line}" Margin="0,6,0,0" Padding="0,6,0,0">
+            <StackPanel>
+              <TextBlock Classes="label" Text="{Binding DefinitionsTitleText}"
+                         Margin="0,0,0,3" />
+              <ItemsControl ItemsSource="{Binding Definitions}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <TextBlock Classes="note" Text="{Binding}" TextWrapping="Wrap"
+                               Margin="0,0,0,3" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Top" Padding="{StaticResource BandPad}"
+            IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+    </Border>
+    <Border DockPanel.Dock="Top" Padding="{StaticResource BandPad}"
+            IsVisible="{Binding EmptyText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <TextBlock Text="{Binding EmptyText}" TextWrapping="Wrap" Opacity="0.8" />
+    </Border>
+
+
+
+    <Grid>
+
+      <ScrollViewer Name="GroupsScroll" IsVisible="{Binding ShowGroups}"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <Grid RowDefinitions="Auto,Auto" MinWidth="{Binding GroupsWidth}">
+        <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Rule}"
+                Background="{StaticResource Cushion1}" Padding="16,0"
+                IsVisible="{Binding ShowGroups}">
+          <StackPanel>
+            <TextBlock Classes="tcap" Text="{Binding GroupCaption}"
+                       IsVisible="{Binding ShowGain}" />
+            <StackPanel Name="GroupsHeaderRow" Orientation="Horizontal">
+              <ItemsControl ItemsSource="{Binding GroupHeaders}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StatsGroupHeader">
+                    <Button Classes="head" Classes.on="{Binding Arrow, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Width="{Binding Width}" VerticalAlignment="Bottom"
+                            Command="{Binding $parent[ItemsControl].((vm:StatsTabViewModel)DataContext).SortGroupsCommand}"
+                            CommandParameter="{Binding Key}">
+                      <Grid RowDefinitions="Auto,Auto">
+                        <TextBlock Grid.Row="0" Classes="band" Text="{Binding Top}" />
+                        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+                          <TextBlock Grid.Column="0" Classes="mark" Text="{Binding Arrow}"
+                                     Width="{Binding LeftSeat}" />
+                          <TextBlock Grid.Column="1" Classes="headline" Text="{Binding Label}"
+                                     Classes.num="{Binding RightAligned}" />
+                          <TextBlock Grid.Column="2" Classes="mark" Text="{Binding Arrow}"
+                                     Width="{Binding RightSeat}" />
+                        </Grid>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding GroupColumns}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StatsAggHeader">
+                    <Border Classes.aggbar="{Binding IsGroupStart}">
+                      <Button Classes="head" Classes.on="{Binding Arrow, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                              Width="{Binding Width}" ToolTip.Tip="{Binding TipOrNull}"
+                              Command="{Binding $parent[ItemsControl].((vm:StatsTabViewModel)DataContext).SortGroupsCommand}"
+                              CommandParameter="{Binding Key}">
+                        <Grid RowDefinitions="Auto,Auto">
+                          <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="band" Text="{Binding Top}" />
+                            <TextBlock Grid.Column="1" Classes="mark" Text="{Binding Arrow}"
+                                       Width="{Binding MarkSeat}" />
+                          </Grid>
+                          <TextBlock Grid.Row="1" Classes="headline num" Text="{Binding Head}" />
+                        </Grid>
+                      </Button>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto">
+
+          <ListBox Classes="table" Name="GroupsList" IsVisible="{Binding ShowGroups}" ItemsSource="{Binding Groups}"
+                   SelectedItem="{Binding SelectedGroup}" AutoScrollToSelectedItem="False"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                   Background="Transparent" BorderThickness="0" Padding="16,4">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="data:StatsGroup">
+                <StackPanel Classes="grouprow" Classes.bandodd="{Binding IsBandOdd}" Orientation="Horizontal">
+                  <ItemsControl ItemsSource="{Binding Lead}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="data:ReplayCell">
+                        <Border Background="{Binding CushionBrush}">
+                          <TextBlock Classes="cell" Text="{Binding Text}" Width="{Binding Width}"
+                                     Classes.num="{Binding RightAligned}"
+                                     Classes.muted="{Binding IsMuted}"
+                                     Classes.p1="{Binding IsP1}" Classes.p2="{Binding IsP2}" />
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <ItemsControl ItemsSource="{Binding Cells}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="data:StatsAggCell">
+                        <Border Classes.aggbar="{Binding IsGroupStart}">
+                          <TextBlock Classes="cell num" Classes.record="{Binding IsRecord}"
+                                     Text="{Binding Text}" Width="{Binding Width}"
+                                     ToolTip.Tip="{Binding TipOrNull}" />
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <TextBlock Grid.Row="1" Classes="tcap" Text="{Binding GainCaption}"
+                     IsVisible="{Binding ShowGain}" Margin="16,8,16,0" />
+          <Border Grid.Row="2" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Rule}"
+                  Background="{StaticResource Cushion1}" Padding="16,0" IsVisible="{Binding ShowGain}">
+            <StackPanel Name="GainHeaderRow" Orientation="Horizontal">
+              <ItemsControl ItemsSource="{Binding GroupHeadersGain}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StatsGroupHeader">
+                    <Button Classes="head" Classes.on="{Binding Arrow, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Width="{Binding Width}" VerticalAlignment="Bottom"
+                            Command="{Binding $parent[ItemsControl].((vm:StatsTabViewModel)DataContext).SortGroupsCommand}"
+                            CommandParameter="{Binding Key}">
+                      <Grid RowDefinitions="Auto,Auto">
+                        <TextBlock Grid.Row="0" Classes="band" Text="{Binding Top}" />
+                        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+                          <TextBlock Grid.Column="0" Classes="mark" Text="{Binding Arrow}"
+                                     Width="{Binding LeftSeat}" />
+                          <TextBlock Grid.Column="1" Classes="headline" Text="{Binding Label}"
+                                     Classes.num="{Binding RightAligned}" />
+                          <TextBlock Grid.Column="2" Classes="mark" Text="{Binding Arrow}"
+                                     Width="{Binding RightSeat}" />
+                        </Grid>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding GroupColumnsGain}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StatsAggHeader">
+                    <Border Classes.aggbar="{Binding IsGroupStart}">
+                      <Button Classes="head" Classes.on="{Binding Arrow, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                              Width="{Binding Width}" ToolTip.Tip="{Binding TipOrNull}"
+                              Command="{Binding $parent[ItemsControl].((vm:StatsTabViewModel)DataContext).SortGroupsCommand}"
+                              CommandParameter="{Binding Key}">
+                        <Grid RowDefinitions="Auto,Auto">
+                          <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="band" Text="{Binding Top}" />
+                            <TextBlock Grid.Column="1" Classes="mark" Text="{Binding Arrow}"
+                                       Width="{Binding MarkSeat}" />
+                          </Grid>
+                          <TextBlock Grid.Row="1" Classes="headline num" Text="{Binding Head}" />
+                        </Grid>
+                      </Button>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+          <ListBox Classes="table" Grid.Row="3" Name="GroupsGainList" IsVisible="{Binding ShowGain}" ItemsSource="{Binding GroupsGain}"
+                   SelectedItem="{Binding SelectedGroup}" AutoScrollToSelectedItem="False"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                   Background="Transparent" BorderThickness="0" Padding="16,4">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="data:StatsGroup">
+                <StackPanel Classes="grouprow" Classes.bandodd="{Binding IsBandOdd}" Orientation="Horizontal">
+                  <ItemsControl ItemsSource="{Binding Lead}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="data:ReplayCell">
+                        <Border Background="{Binding CushionBrush}">
+                          <TextBlock Classes="cell" Text="{Binding Text}" Width="{Binding Width}"
+                                     Classes.num="{Binding RightAligned}"
+                                     Classes.muted="{Binding IsMuted}"
+                                     Classes.p1="{Binding IsP1}" Classes.p2="{Binding IsP2}" />
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <ItemsControl ItemsSource="{Binding Cells}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="data:StatsAggCell">
+                        <Border Classes.aggbar="{Binding IsGroupStart}">
+                          <TextBlock Classes="cell num" Classes.record="{Binding IsRecord}"
+                                     Text="{Binding Text}" Width="{Binding Width}"
+                                     ToolTip.Tip="{Binding TipOrNull}" />
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+        </Grid>
+      </ScrollViewer>
+
+      <ScrollViewer Name="MatrixView" IsVisible="{Binding ShowMatrix}" Padding="16,6"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+          <TextBlock Classes="label" Text="{Binding MatrixTitle}" Margin="0,0,0,4" />
+          <ItemsControl ItemsSource="{Binding MatrixLegend}" Margin="0,0,0,6">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Classes="note" Text="{Binding}" TextWrapping="Wrap" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <ItemsControl Name="MatrixRowsList" ItemsSource="{Binding MatrixRows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="data:StatsMatrixRow">
+                <ItemsControl ItemsSource="{Binding Cells}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="data:StatsMatrixCell">
+                      <Button Classes="mxcell" Classes.mxhead="{Binding IsHeader}"
+                              Classes.rowhead="{Binding IsRowHeader}" Classes.self="{Binding IsSelf}"
+                              Width="{Binding Width}" Background="{Binding Background}"
+                              IsEnabled="{Binding CanPick}" ToolTip.Tip="{Binding TipOrNull}"
+                              Command="{Binding $parent[UserControl].((vm:StatsTabViewModel)DataContext).PickMatrixCommand}"
+                              CommandParameter="{Binding}">
+                        <TextBlock Text="{Binding Text}" />
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+
+      <ScrollViewer Name="RecordsScroll" IsVisible="{Binding ShowRecords}" Padding="16,6"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <StackPanel MinWidth="{Binding RecordsWidth}">
+          <TextBlock Classes="label" Text="{Binding RecordsTitle}" Margin="0,0,0,6" />
+          <Border Background="{StaticResource Cushion1}">
+          <StackPanel Name="RecordsHeaderRow" Orientation="Horizontal">
+            <ItemsControl ItemsSource="{Binding RecordColumns}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="data:StatsRecordColumn">
+                  <TextBlock Classes="label" Text="{Binding Label}" Width="{Binding Width}"
+                             Margin="0,0,0,3"
+                             Classes.num="{Binding RightAligned}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          </Border>
+          <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource Rule}" />
+          <ItemsControl Name="RecordsList" ItemsSource="{Binding RecordRows}" Margin="0,3,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="data:StatsRecordRow">
+                <Border Classes="tablerow">
+                <ItemsControl ItemsSource="{Binding Cells}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="data:StatsRecordCell">
+                      <TextBlock Text="{Binding Text}" Width="{Binding Width}"
+                                 Margin="0,1,0,2"
+                                 Classes.num="{Binding RightAligned}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <ItemsControl ItemsSource="{Binding RecordNotes}" Margin="0,8,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Classes="note" Text="{Binding}" TextWrapping="Wrap"
+                           Margin="0,0,0,2" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+
+      <ScrollViewer Name="LeafScroll" IsVisible="{Binding IsLeaf}"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <DockPanel MinWidth="{Binding LeafWidth}" LastChildFill="True">
+        <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Rule}"
+                Background="{StaticResource Cushion1}" Padding="16,0"
+                IsVisible="{Binding IsLeaf}">
+          <ItemsControl Name="HeaderRow" ItemsSource="{Binding Headers}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:StatsLeafHeader">
+                <Button Classes="head" Classes.on="{Binding Arrow, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                        Width="{Binding Width}" ToolTip.Tip="{Binding Tip}"
+                        Command="{Binding $parent[ItemsControl].((vm:StatsTabViewModel)DataContext).SortLeafCommand}"
+                        CommandParameter="{Binding Key}">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Grid.Column="0" Classes="mark" Text="{Binding Arrow}"
+                               Width="{Binding LeftSeat}" />
+                    <TextBlock Grid.Column="1" Classes="headline" Text="{Binding Label}"
+                               Classes.num="{Binding RightAligned}" />
+                    <TextBlock Grid.Column="2" Classes="mark" Text="{Binding Arrow}"
+                               Width="{Binding RightSeat}" />
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+          <ListBox Classes="table" Name="RowsList" IsVisible="{Binding IsLeaf}" ItemsSource="{Binding Rows}"
+                   SelectedItem="{Binding SelectedRow}" AutoScrollToSelectedItem="False"
+                   Background="Transparent" BorderThickness="0" Padding="16,0">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="data:IStatsLeafRow">
+                <StackPanel Orientation="Horizontal">
+                  <ItemsControl ItemsSource="{Binding LeadCells}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="data:ReplayCell">
+                        <TextBlock Classes="cell" Text="{Binding Text}" Width="{Binding Width}"
+                                   Classes.num="{Binding RightAligned}"
+                                   Classes.muted="{Binding IsMuted}"
+                                   Classes.p1="{Binding IsP1}" Classes.p2="{Binding IsP2}" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <ItemsControl ItemsSource="{Binding Rounds}" Width="{Binding RoundTimesWidth}" Margin="{StaticResource CellPad}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="data:StatsRound">
+                        <StackPanel Orientation="Horizontal">
+                          <TextBlock Text="{Binding Text}"
+                                     Classes.p1="{Binding IsSelfWin}" Classes.p2="{Binding IsFoeWin}"
+                                     Classes.cur="{Binding IsCurrent}" />
+                          <TextBlock Text=" / " Classes="muted" IsVisible="{Binding HasNext}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <ItemsControl ItemsSource="{Binding TailCells}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="data:ReplayCell">
+                        <TextBlock Classes="cell" Text="{Binding Text}" Width="{Binding Width}"
+                                   Classes.num="{Binding RightAligned}"
+                                   Classes.muted="{Binding IsMuted}"
+                                   Classes.p1="{Binding IsP1}" Classes.p2="{Binding IsP2}" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </ScrollViewer>
+
+    </Grid>
+
+  </DockPanel>
+</UserControl>

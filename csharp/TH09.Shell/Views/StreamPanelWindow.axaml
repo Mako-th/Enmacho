@@ -1,0 +1,54 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:TH09.Shell.ViewModels"
+        x:Class="TH09.Shell.Views.StreamPanelWindow"
+        x:DataType="vm:StreamPanelViewModel"
+        Title="TH09 配信パネル"
+        Topmost="{Binding Options.Topmost}"
+        WindowDecorations="{Binding WindowDecorations}"
+        Background="{Binding BackgroundBrush}"
+        ShowInTaskbar="True">
+
+
+  <Window.ContextFlyout>
+    <MenuFlyout>
+      <MenuItem Header="出す項目">
+        <MenuItem Name="StreamItemSb" Header="SB" ToggleType="CheckBox"
+                  IsChecked="{Binding ShowSb, Mode=TwoWay}" />
+        <MenuItem Name="StreamItemPb" Header="PB" ToggleType="CheckBox"
+                  IsChecked="{Binding ShowPb, Mode=TwoWay}" />
+        <MenuItem Name="StreamItemTarget" Header="Target" ToggleType="CheckBox"
+                  IsChecked="{Binding ShowTarget, Mode=TwoWay}" />
+        <MenuItem Name="StreamItemWr" Header="WR" ToggleType="CheckBox"
+                  IsChecked="{Binding ShowWr, Mode=TwoWay}" />
+      </MenuItem>
+      <MenuItem Header="背景色">
+        <MenuItem Header="黒" Command="{Binding SetBackgroundCommand}" CommandParameter="#0b0b12" />
+        <MenuItem Header="濃紺" Command="{Binding SetBackgroundCommand}" CommandParameter="#0d1b2a" />
+        <MenuItem Header="緑（クロマキー）" Command="{Binding SetBackgroundCommand}"
+                  CommandParameter="#00b140" />
+        <MenuItem Header="マゼンタ（クロマキー）" Command="{Binding SetBackgroundCommand}"
+                  CommandParameter="#b400ff" />
+      </MenuItem>
+      <MenuItem Header="文字を大きく" Command="{Binding EnlargeFontCommand}" />
+      <MenuItem Header="文字を小さく" Command="{Binding ShrinkFontCommand}" />
+      <Separator />
+      <MenuItem Header="常に手前を切替（★排他フルスクリーンでは危険）"
+                Command="{Binding ToggleTopmostCommand}" />
+      <MenuItem Header="枠なし表示を切替（ドラッグで移動）" Command="{Binding ToggleBorderlessCommand}" />
+      <MenuItem Header="{Binding ResetSizeLabel}" Command="{Binding ResetSizeCommand}" />
+      <MenuItem Header="画面の外へ逃がす" Command="{Binding HideOffscreenCommand}" />
+      <MenuItem Header="画面へ戻す" Command="{Binding ShowOnscreenCommand}" />
+      <Separator />
+      <MenuItem Header="閉じる" Command="{Binding CloseCommand}" />
+    </MenuFlyout>
+  </Window.ContextFlyout>
+
+  <Border Name="DragSurface" Background="Transparent" PointerPressed="OnDragSurfacePressed">
+    <ScrollViewer Padding="16,14" HorizontalScrollBarVisibility="Auto">
+      <SelectableTextBlock Name="PanelText" Text="{Binding Text}"
+                           FontFamily="Consolas, Courier New, monospace"
+                           FontSize="{Binding FontSize}" Foreground="{StaticResource StreamFg}" />
+    </ScrollViewer>
+  </Border>
+</Window>

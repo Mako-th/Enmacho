@@ -1,0 +1,89 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(Th09TargetFramework)</TargetFramework>
+    <RuntimeIdentifier>$(Th09RuntimeIdentifier)</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>$(Th09ShellAssemblyName)</AssemblyName>
+    <RootNamespace>TH09.Shell</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+
+  <PropertyGroup Condition="'$(Th09Dev)' == 'true'">
+    <DefineConstants>$(DefineConstants);TH09_DEV</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(Th09Dev)' != 'true'">
+    <Compile Remove="Dev\**\*.cs" />
+    <AvaloniaXaml Remove="Dev\**\*.axaml" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="SkiaSharp" Version="$(SkiaSharpVersion)" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="$(CommunityToolkitMvvmVersion)" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="$(MicrosoftDataSqliteVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TH09.Analysis\TH09.Analysis.csproj" />
+    <ProjectReference Include="..\TH09.Record\TH09.Record.csproj" />
+    <ProjectReference Include="..\TH09.TickBus\TH09.TickBus.csproj" />
+    <ProjectReference Include="..\TH09.ProcView\TH09.ProcView.csproj" />
+    <ProjectReference Include="..\TH09.Launch\TH09.Launch.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <AllowedReferenceRelatedFileExtensions>none</AllowedReferenceRelatedFileExtensions>
+  </PropertyGroup>
+
+  <Target Name="Th09DropReferencedAppFilesFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+          Condition="$([System.String]::Copy('%(Filename)').EndsWith('.runtimeconfig'))
+                     Or $([System.String]::Copy('%(Filename)').EndsWith('.deps'))" />
+    </ItemGroup>
+  </Target>
+
+  <PropertyGroup>
+    <Th09DriveOutDir>$(MSBuildThisFileDirectory)..\TH09.Drive\bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</Th09DriveOutDir>
+  </PropertyGroup>
+
+  <Target Name="Th09CopyDriveForDev" AfterTargets="Build"
+          Condition="'$(_IsPublishing)' != 'true'">
+    <PropertyGroup>
+      <Th09DriveBuilt Condition="Exists('$(Th09DriveOutDir)$(Th09DriveAssemblyName).exe')">true</Th09DriveBuilt>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(Th09DriveBuilt)' == 'true'">
+      <Th09DriveFiles Include="$(Th09DriveOutDir)*.exe;$(Th09DriveOutDir)*.dll;$(Th09DriveOutDir)*.deps.json;$(Th09DriveOutDir)*.runtimeconfig.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(Th09DriveFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true"
+          Condition="'$(Th09DriveBuilt)' == 'true'" />
+    <Warning Condition="'$(Th09DriveBuilt)' != 'true'"
+             Text="$(Th09DriveAssemblyName) がまだ建っていません: dotnet build -c Release csharp/TH09.Drive -p:Th09Dev=$(Th09Dev)" />
+  </Target>
+
+</Project>

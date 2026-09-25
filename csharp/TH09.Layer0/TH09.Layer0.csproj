@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>$(Th09TargetFramework)</TargetFramework>
+    <RuntimeIdentifier>$(Th09RuntimeIdentifier)</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>th09_layer0</AssemblyName>
+    <RootNamespace>TH09.Layer0</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="$(MicrosoftDataSqliteVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="parity\**\*.py" />
+    <None Include="tools\**\*.py" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <Th09Python Condition="'$(Th09Python)' == ''">python</Th09Python>
+    <Th09Layer0Script>$(MSBuildThisFileDirectory)tools\gen_layer0_constants.py</Th09Layer0Script>
+  </PropertyGroup>
+
+  <Target Name="Th09GenerateLayer0Constants" BeforeTargets="BeforeCompile"
+          Condition="'$(Th09GenerateConstants)' != 'false' And Exists('$(Th09Layer0Script)')">
+    <PropertyGroup>
+      <Th09Layer0GeneratedDir>$(BaseIntermediateOutputPath)generated2</Th09Layer0GeneratedDir>
+    </PropertyGroup>
+    <Exec Command="&quot;$(Th09Python)&quot; &quot;$(Th09Layer0Script)&quot; --out-dir &quot;$(Th09Layer0GeneratedDir)&quot;"
+          EnvironmentVariables="PYTHONUTF8=1"
+          UseUtf8Encoding="Always"
+          StandardOutputImportance="normal"
+          ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="Th09Layer0ExitCode" />
+    </Exec>
+    <Error Condition="'$(Th09Layer0ExitCode)' != '0'"
+           Text="★Layer 0 の DDL と既定値の生成に失敗した（終了コード $(Th09Layer0ExitCode)）。ビルドには Python が要る。場所を教えるなら -p:Th09Python=&lt;python.exe のパス&gt;。" />
+    <ItemGroup>
+      <Compile Include="$(Th09Layer0GeneratedDir)\Th09Layer0*.g.cs" />
+      <FileWrites Include="$(Th09Layer0GeneratedDir)\Th09Layer0*.g.cs" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>$(Th09TargetFramework)</TargetFramework>
+    <RuntimeIdentifier>$(Th09RuntimeIdentifier)</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>th09_analysis</AssemblyName>
+    <RootNamespace>TH09.Analysis</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="$(MicrosoftDataSqliteVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TH09.Layer0\TH09.Layer0.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="parity\**\*.py" />
+    <None Include="tools\**\*.py" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <Th09Python Condition="'$(Th09Python)' == ''">python</Th09Python>
+    <Th09AnalysisScript>$(MSBuildThisFileDirectory)tools\gen_analysis_constants.py</Th09AnalysisScript>
+  </PropertyGroup>
+
+  <Target Name="Th09GenerateAnalysisConstants" BeforeTargets="BeforeCompile"
+          Condition="'$(Th09GenerateConstants)' != 'false' And Exists('$(Th09AnalysisScript)')">
+    <PropertyGroup>
+      <Th09AnalysisGeneratedDir>$(BaseIntermediateOutputPath)generated6</Th09AnalysisGeneratedDir>
+    </PropertyGroup>
+    <Exec Command="&quot;$(Th09Python)&quot; &quot;$(Th09AnalysisScript)&quot; --out-dir &quot;$(Th09AnalysisGeneratedDir)&quot;"
+          EnvironmentVariables="PYTHONUTF8=1"
+          UseUtf8Encoding="Always"
+          StandardOutputImportance="normal"
+          ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="Th09AnalysisExitCode" />
+    </Exec>
+    <Error Condition="'$(Th09AnalysisExitCode)' != '0'"
+           Text="★段 6 の表（float / 符号付き / flags の区画 / 座標リングの枠）の生成に失敗した（終了コード $(Th09AnalysisExitCode)）。ビルドには Python が要る。場所を教えるなら -p:Th09Python=&lt;python.exe のパス&gt;。" />
+    <ItemGroup>
+      <Compile Include="$(Th09AnalysisGeneratedDir)\Th09Analysis*.g.cs" />
+      <FileWrites Include="$(Th09AnalysisGeneratedDir)\Th09Analysis*.g.cs" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -1,0 +1,264 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:TH09.Shell.ViewModels"
+             xmlns:data="using:TH09.Shell.Data"
+             x:Class="TH09.Shell.Views.ReplayDetailView"
+             x:DataType="vm:ReplayDetailViewModel"
+             Focusable="True">
+
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="Back" Command="{Binding BackCommand}" />
+  </UserControl.KeyBindings>
+
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Opacity" Value="0.65" />
+    </Style>
+    <Style Selector="TextBlock.num">
+      <Setter Property="TextAlignment" Value="Right" />
+    </Style>
+    <Style Selector="TextBlock.cell">
+      <Setter Property="Margin" Value="9,3" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.head">
+      <Setter Property="Margin" Value="9,4,9,5" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="Button.page">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0,0,0,2" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Padding" Value="10,3,10,4" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="Button.page.on">
+      <Setter Property="BorderBrush" Value="{StaticResource Fg}" />
+      <Setter Property="Foreground" Value="{StaticResource Fg}" />
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel LastChildFill="True">
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}" Padding="{StaticResource BandPad}">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <TextBlock Text="リプレイ" Classes="muted" />
+          <TextBlock Text="▸" Classes="muted" />
+          <TextBlock Text="{Binding Header.ModeText}" Classes="muted" />
+          <TextBlock Text="▸" Classes="muted" />
+          <TextBlock Classes="title" Text="{Binding Header.CrumbText}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+          <Button Name="BackButton" Command="{Binding BackCommand}" Padding="10,3,10,4">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="← 戻る" />
+              <TextBlock Classes="note" Text="Backspace" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}"
+            Padding="16,10,16,9" IsVisible="{Binding HasHeader}">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <TextBlock Text="{Binding Header.P1CharacterText}" Classes="p1" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding Header.P1NameText}" Classes="muted"
+                     VerticalAlignment="Center" />
+          <TextBlock Text="vs" Classes="muted" VerticalAlignment="Center"
+                     IsVisible="{Binding IsMatch}" />
+          <TextBlock Text="{Binding Header.P2CharacterText}" Classes="p2" FontSize="16" FontWeight="SemiBold"
+                     IsVisible="{Binding IsMatch}" />
+          <TextBlock Text="{Binding Header.P2NameText}" Classes="muted"
+                     VerticalAlignment="Center" IsVisible="{Binding IsMatch}" />
+        </StackPanel>
+        <TextBlock Text="{Binding Header.SubtitleText}" Classes="muted" />
+      </StackPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}" Padding="{StaticResource BandPad}">
+      <ItemsControl ItemsSource="{Binding Pages}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:DetailPageButton">
+            <Button Classes="page" Classes.on="{Binding IsActive}" Content="{Binding Label}"
+                    Command="{Binding $parent[ItemsControl].((vm:ReplayDetailViewModel)DataContext).ShowPageCommand}"
+                    CommandParameter="{Binding Page}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
+    <Border DockPanel.Dock="Top" Padding="{StaticResource BandPad}"
+            IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+    </Border>
+
+    <Border DockPanel.Dock="Top" Padding="16,0,16,6"
+            IsVisible="{Binding CountNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <TextBlock Classes="note" Text="{Binding CountNote}" TextWrapping="Wrap" />
+    </Border>
+
+    <Grid>
+
+      <ScrollViewer Name="RoundsScroll" IsVisible="{Binding IsOverview}"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+      <DockPanel MinWidth="{Binding RoundsWidth}" LastChildFill="True">
+
+        <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Rule}"
+                Background="{StaticResource Cushion1}" Padding="16,0">
+          <ItemsControl Name="HeaderRow" ItemsSource="{Binding Headers}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ReplayDetailHeaderCell">
+                <Panel Width="{Binding Width}">
+                  <TextBlock Classes="head" Text="{Binding Label}"
+                             Classes.num="{Binding RightAligned}" Classes.muted="{Binding IsMuted}" />
+                </Panel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+
+        <ListBox Classes="table" Name="RowsList" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                 Background="Transparent" BorderThickness="0" Padding="16,0">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="data:ReplayDetailRow">
+              <ItemsControl ItemsSource="{Binding Cells}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="data:ReplayDetailCell">
+                    <Panel Width="{Binding Width}">
+                      <TextBlock Classes="cell" Text="{Binding Text}" IsVisible="{Binding IsPlain}"
+                                 Classes.num="{Binding RightAligned}"
+                                 Classes.muted="{Binding IsMuted}"
+                                 Classes.p1="{Binding IsP1}" Classes.p2="{Binding IsP2}" />
+                      <StackPanel Orientation="Horizontal" Margin="9,3" IsVisible="{Binding IsPair}"
+                                  HorizontalAlignment="Right">
+                        <TextBlock Text="{Binding Pair.P1}" Classes="p1" />
+                        <TextBlock Text="/" Classes="muted" />
+                        <TextBlock Text="{Binding Pair.P2}" Classes="p2" />
+                      </StackPanel>
+                    </Panel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+      </DockPanel>
+      </ScrollViewer>
+
+      <DockPanel IsVisible="{Binding IsHitWindow}" LastChildFill="True">
+        <Border DockPanel.Dock="Top" Padding="16,6" IsVisible="{Binding HasHitWindows}">
+          <ListBox ItemsSource="{Binding HitWindows}" SelectedItem="{Binding SelectedHitWindow}"
+                   Background="Transparent" BorderThickness="0" Padding="0">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:HitWindowChoice">
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="9,3">
+                  <TextBlock Text="{Binding Label}" />
+                  <TextBlock Text="{Binding TickText}" Classes="muted" FontSize="11"
+                             VerticalAlignment="Center" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Border>
+        <Border DockPanel.Dock="Top" Padding="16,4"
+                IsVisible="{Binding HitWindowNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+          <TextBlock Text="{Binding HitWindowNote}" Classes="muted" TextWrapping="Wrap" />
+        </Border>
+        <ContentControl Content="{Binding HitWindowContent}" />
+      </DockPanel>
+      <TextBlock IsVisible="{Binding IsHitWindowEmpty}" Margin="16" VerticalAlignment="Top"
+                 Classes="muted" TextWrapping="Wrap"
+                 Text="被弾窓はまだ差し込まれていません。" />
+
+      <ContentControl IsVisible="{Binding IsTrend}" Content="{Binding TrendContent}" />
+      <TextBlock IsVisible="{Binding IsTrendEmpty}" Margin="16" VerticalAlignment="Top"
+                 Classes="muted" TextWrapping="Wrap"
+                 Text="数値の推移はまだ差し込まれていません。" />
+
+      <DockPanel IsVisible="{Binding IsFiles}" LastChildFill="True">
+
+        <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Rule}"
+                Background="{StaticResource Cushion1}" Padding="16,0"
+                IsVisible="{Binding HasFiles}">
+          <ItemsControl Name="FilesHeaderRow" ItemsSource="{x:Static data:ReplayFileColumns.All}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="data:ReplayFileColumn">
+                <Panel Width="{Binding Width}">
+                  <TextBlock Classes="head" Text="{Binding Label}"
+                             Classes.num="{Binding RightAligned}" Classes.muted="{Binding IsMuted}" />
+                </Panel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom" Padding="16,6"
+                IsVisible="{Binding FilesNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+          <TextBlock Text="{Binding FilesNote}" Classes="muted" TextWrapping="Wrap" />
+        </Border>
+
+        <ListBox Classes="table" Name="FilesList" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}"
+                 Background="Transparent" BorderThickness="0" Padding="16,0"
+                 DoubleTapped="OnFileRowDoubleTapped">
+          <ListBox.ContextFlyout>
+            <MenuFlyout>
+              <MenuItem Header="{x:Static data:ReplayFileLabels.RevealInExplorer}"
+                        Click="OnRevealFileRow" />
+            </MenuFlyout>
+          </ListBox.ContextFlyout>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="data:ReplayFileRow">
+              <ItemsControl ItemsSource="{Binding Cells}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="data:ReplayFileCell">
+                    <Panel Width="{Binding Width}">
+                      <TextBlock Classes="cell" Text="{Binding Text}"
+                                 Classes.num="{Binding RightAligned}"
+                                 Classes.muted="{Binding IsMuted}" />
+                    </Panel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+      </DockPanel>
+
+    </Grid>
+  </DockPanel>
+</UserControl>

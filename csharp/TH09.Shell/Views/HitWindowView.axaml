@@ -1,0 +1,410 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:TH09.Shell.ViewModels"
+             xmlns:v="using:TH09.Shell.Views"
+             x:Class="TH09.Shell.Views.HitWindowView"
+             x:DataType="vm:HitWindowViewModel"
+             Focusable="True">
+
+
+  <UserControl.Resources>
+
+    <DataTemplate x:Key="KvTemplate" x:DataType="vm:LiveKvRow">
+      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,1">
+        <TextBlock Grid.Column="0" Classes="k" Text="{Binding K}"
+                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding K}" />
+        <TextBlock Grid.Column="1" Classes="val" Text="{Binding V}" Margin="12,0,0,0" />
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="HitHeadBlock" x:DataType="vm:HitWindowViewModel">
+      <StackPanel>
+        <Border BorderBrush="{Binding HitSideBrush}" BorderThickness="3,0,0,0"
+                Padding="8,3,0,3" Margin="0,0,0,4">
+          <StackPanel>
+            <TextBlock Classes="k" Text="{Binding PaneLabel}" />
+            <TextBlock Text="{Binding HitSideText}" FontWeight="SemiBold"
+                       Foreground="{StaticResource Fg}" />
+            <TextBlock Classes="note" Text="{Binding HitFoeText}"
+                             IsVisible="{Binding ShowFoeText}" />
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="KvRowsBlock" x:DataType="vm:HitWindowViewModel">
+      <StackPanel>
+        <TextBlock Classes="lgh" Text="この被弾" />
+        <ItemsControl ItemsSource="{Binding HitRowsLive}" ItemTemplate="{StaticResource KvTemplate}" />
+
+        <TextBlock Classes="lgh" Text="状況（被弾の直前）" />
+        <ItemsControl ItemsSource="{Binding SituationRowsLive}" ItemTemplate="{StaticResource KvTemplate}" />
+
+        <ItemsControl ItemsSource="{Binding ExRowsLive}" ItemTemplate="{StaticResource KvTemplate}"
+                      Margin="0,6,0,0" />
+
+        <TextBlock Classes="lgh" Text="カーソル位置" />
+        <ItemsControl ItemsSource="{Binding CursorRowsLive}" ItemTemplate="{StaticResource KvTemplate}" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="LegendBlock" x:DataType="vm:HitWindowViewModel">
+      <StackPanel>
+        <TextBlock Classes="lgh" Text="盤面の色" />
+        <ItemsControl ItemsSource="{Binding LegendRows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:LegendRow">
+              <Grid ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,2">
+                <TextBlock Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding Text}"
+                           FontSize="12" FontWeight="SemiBold" Margin="0,10,0,3"
+                           IsVisible="{Binding Header}"
+                           Foreground="{StaticResource Fg}" />
+                <Panel Grid.Column="0" Width="12" Height="12" VerticalAlignment="Top"
+                       Margin="0,1,0,0"
+                       IsVisible="{Binding HasSwatch}">
+                  <Rectangle IsVisible="{Binding IsBox}" Width="10" Height="10"
+                             Fill="{Binding Swatch}" Stroke="{Binding Stroke}"
+                             StrokeThickness="{Binding StrokeW}"
+                             StrokeDashArray="{Binding Dash}" />
+                  <Ellipse IsVisible="{Binding IsRound}" Width="10" Height="10"
+                           Fill="{Binding Swatch}" Stroke="{Binding Stroke}"
+                           StrokeThickness="{Binding StrokeW}"
+                           StrokeDashArray="{Binding Dash}" />
+                  <Rectangle IsVisible="{Binding IsBar}" Width="10" Height="3"
+                             VerticalAlignment="Center" Fill="{Binding Swatch}" />
+                </Panel>
+                <TextBlock Grid.Column="1" Classes="note" Text="{Binding Text}"
+                           Margin="5,0,0,0" TextWrapping="Wrap"
+                           IsVisible="{Binding !Header}" />
+                <TextBlock Grid.Column="2" Classes="note" Text="{Binding Note}"
+                           Margin="8,0,0,0" TextWrapping="Wrap"
+                           TextAlignment="Right"
+                           IsVisible="{Binding HasNote}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Classes="lgh" Text="一時停止（盤面が固まる）" />
+        <ItemsControl ItemsSource="{Binding FreezeLegendRowsLive}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:LiveKvRow">
+              <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,1">
+                <TextBlock Grid.Column="0" Classes="k" Text="{Binding K}" />
+                <TextBlock Grid.Column="1" Classes="val" Text="{Binding V}"
+                           Margin="12,0,0,0" TextWrapping="Wrap" TextAlignment="Right" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Classes="lgh" Text="{x:Static vm:HitWindowViewModel.CardLegendHeading}" />
+        <ItemsControl ItemsSource="{Binding CardLegendRows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:LegendRow">
+              <Grid ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,2">
+                <Panel Grid.Column="0" Width="12" Height="12" VerticalAlignment="Top"
+                       Margin="0,1,0,0"
+                       IsVisible="{Binding HasSwatch}">
+                  <Rectangle IsVisible="{Binding IsBox}" Width="10" Height="10"
+                             Fill="{Binding Swatch}" Stroke="{Binding Stroke}"
+                             StrokeThickness="{Binding StrokeW}"
+                             StrokeDashArray="{Binding Dash}" />
+                  <Ellipse IsVisible="{Binding IsRound}" Width="10" Height="10"
+                           Fill="{Binding Swatch}" Stroke="{Binding Stroke}"
+                           StrokeThickness="{Binding StrokeW}"
+                           StrokeDashArray="{Binding Dash}" />
+                  <Rectangle IsVisible="{Binding IsBar}" Width="10" Height="3"
+                             VerticalAlignment="Center" Fill="{Binding Swatch}" />
+                </Panel>
+                <TextBlock Grid.Column="1" Classes="note" Text="{Binding Text}"
+                           Margin="5,0,0,0" TextWrapping="Wrap" />
+                <TextBlock Grid.Column="2" Classes="note" Text="{Binding Note}"
+                           Margin="8,0,0,0" TextWrapping="Wrap"
+                           TextAlignment="Right"
+                           IsVisible="{Binding HasNote}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.k">
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.val">
+      <Setter Property="Foreground" Value="{StaticResource Fg}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector="TextBlock.lgh">
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="Margin" Value="0,12,0,3" />
+    </Style>
+    <Style Selector="TextBlock.barlab">
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.on">
+      <Setter Property="Background" Value="{StaticResource Raised}" />
+      <Setter Property="Foreground" Value="{StaticResource Fg}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Fg}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.on:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Raised}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Fg}" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel Background="{StaticResource Bg}">
+
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="{Binding HorizontalScroll}">
+      <StackPanel>
+        <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1"
+                Padding="18,14,18,12">
+          <StackPanel>
+            <TextBlock Classes="title" Text="{Binding Heading}" />
+            <TextBlock Classes="note" Text="{Binding SubHeading}" Margin="0,3,0,0" />
+          </StackPanel>
+        </Border>
+        <Grid Name="Body" ColumnDefinitions="Auto,Auto,*" Margin="18,14,18,18">
+
+          <Grid ColumnDefinitions="*,18,*" Width="436" IsVisible="{Binding !BothSides}">
+            <ContentControl Grid.Column="0" Content="{Binding}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:HitWindowViewModel">
+                  <StackPanel>
+                    <ContentControl Content="{Binding}"
+                                    ContentTemplate="{StaticResource HitHeadBlock}" />
+                    <ContentControl Content="{Binding}"
+                                    ContentTemplate="{StaticResource KvRowsBlock}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+            <ContentControl Grid.Column="2" Content="{Binding}"
+                            ContentTemplate="{StaticResource LegendBlock}" />
+          </Grid>
+
+          <ItemsControl Grid.Column="1" ItemsSource="{Binding Panes}"
+                        Margin="{x:Static v:ShellLayout.BoardLeftMargin}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:HitWindowViewModel">
+                <StackPanel Spacing="6" Margin="{Binding PaneMargin}">
+                  <ContentControl Content="{Binding}" IsVisible="{Binding InPair}"
+                                  ContentTemplate="{StaticResource HitHeadBlock}" />
+                  <Border BorderBrush="{StaticResource Line}" BorderThickness="1">
+                    <v:BoardCanvas Model="{Binding}" Tick="{Binding TickIndex}"
+                                   Revision="{Binding Revision}"
+                                   ThemeName="{Binding Theme}" ColorBy="{Binding ColorBy}"
+                                   ExTrail="{Binding ExTrail}"
+                                   Width="{Binding BoardWidth}" Height="{Binding BoardHeight}" />
+                  </Border>
+                  <Border BorderBrush="{StaticResource Line}" BorderThickness="1"
+                          Width="{Binding BoardWidth}">
+                    <v:GaugeCanvas Model="{Binding}" Tick="{Binding TickIndex}"
+                                   Revision="{Binding Revision}"
+                                   ThemeName="{Binding Theme}" OnlySide="{Binding GaugeOnlySide}" />
+                  </Border>
+                  <ContentControl Content="{Binding}" IsVisible="{Binding InPair}"
+                                  Width="{Binding BoardWidth}"
+                                  ContentTemplate="{StaticResource KvRowsBlock}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+
+          <DockPanel Grid.Column="2" Margin="20,0,0,0" MinWidth="340">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+              <Button Name="PrevHitWindow" Content="← 前の被弾"
+                      Command="{Binding $parent[v:ReplayDetailView].((vm:ReplayDetailViewModel)DataContext).PrevHitWindowCommand}" />
+              <Button Name="NextHitWindow" Content="次の被弾 →"
+                      Command="{Binding $parent[v:ReplayDetailView].((vm:ReplayDetailViewModel)DataContext).NextHitWindowCommand}" />
+              <TextBlock Classes="note" VerticalAlignment="Center"
+                         Text="{Binding $parent[v:ReplayDetailView].((vm:ReplayDetailViewModel)DataContext).HitWindowPositionText}" />
+              <TextBlock Classes="note" Text="{Binding EventText}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,*"
+                  Margin="0,6,0,0">
+              <Button Grid.Row="0" Grid.Column="0" Command="{Binding TogglePlayCommand}"
+                      Width="30" Height="30" Padding="0" Margin="0,0,8,0"
+                      HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                      ToolTip.Tip="再生 / 一時停止（Space）　※終了は Esc">
+                <Panel Width="12" Height="13">
+                  <Path Name="PlayGlyph" IsVisible="{Binding !Playing}" Data="M 1,0 L 11,6.5 L 1,13 Z"
+                        Fill="{Binding $parent[Button].Foreground}" />
+                  <StackPanel Name="PauseGlyph" IsVisible="{Binding Playing}" Orientation="Horizontal" Spacing="4"
+                              HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Rectangle Width="4" Height="13" Fill="{Binding $parent[Button].Foreground}" />
+                    <Rectangle Width="4" Height="13" Fill="{Binding $parent[Button].Foreground}" />
+                  </StackPanel>
+                </Panel>
+              </Button>
+              <Button Grid.Row="1" Grid.Column="0" Command="{Binding StopPlayCommand}"
+                      Width="30" Height="30" Padding="0" Margin="0,6,8,0" VerticalAlignment="Top"
+                      HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                      ToolTip.Tip="終了（Esc）　再生をやめて再生開始点へ戻る">
+                <Panel Width="12" Height="13">
+                  <Rectangle Name="StopGlyph" Width="11" Height="11"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                             Fill="{Binding $parent[Button].Foreground}" />
+                </Panel>
+              </Button>
+              <Slider Grid.Row="0" Grid.Column="1" Minimum="0"
+                      Maximum="{Binding SeekMax}" Value="{Binding TickIndex, Mode=TwoWay}" />
+              <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Spacing="6"
+                          Margin="8,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding TimeText}" Foreground="{StaticResource Fg}" />
+                <TextBlock Classes="note" Text="{Binding SpeedText}" />
+              </StackPanel>
+
+              <Border Grid.Row="1" Grid.Column="1" BorderBrush="{StaticResource Line}"
+                      BorderThickness="1" Margin="0,6,0,0">
+                <v:StripCanvas Name="StripTicks" Model="{Binding}" Tick="{Binding TickIndex}"
+                               Revision="{Binding Revision}"
+                               ThemeName="{Binding Theme}" Role="Ticks" />
+              </Border>
+              <ItemsControl Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Panes}"
+                            Margin="0,6,0,0" VerticalAlignment="Top">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:HitWindowViewModel">
+                    <StackPanel Margin="0,0,0,6">
+                      <TextBlock Text="{Binding PaneName}" FontWeight="SemiBold" FontSize="12"
+                                 Foreground="{StaticResource Fg}" Margin="0,0,0,2"
+                                 IsVisible="{Binding InPair}" />
+                      <Border BorderBrush="{StaticResource Line}" BorderThickness="1">
+                        <v:StripCanvas Model="{Binding}" Tick="{Binding TickIndex}"
+                                       Revision="{Binding Revision}"
+                                       ThemeName="{Binding Theme}" Role="Strips" />
+                      </Border>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+            </Grid>
+
+            <TextBlock Classes="note" DockPanel.Dock="Top" Margin="0,10,0,0" MaxWidth="560" TextWrapping="Wrap"
+                       Text="キー　← → 1 tick ／ Shift ＋ ← → 10 tick ／ Space 再生・停止 ／ Esc 終了（再生開始点へ戻る）／ Home 窓の先頭 ／ H 被弾の瞬間 ／ − ＋ 再生速度" />
+
+          </DockPanel>
+        </Grid>
+        <Border Name="Footer" BorderBrush="{StaticResource Rule}" BorderThickness="0,1,0,0"
+                Padding="18,12,18,20">
+          <StackPanel Spacing="10">
+            <ItemsControl ItemsSource="{Binding Panes}" IsVisible="{Binding BothSides}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:HitWindowViewModel">
+                  <StackPanel Width="436" Margin="0,0,24,0">
+                    <TextBlock Text="{Binding PaneName}" FontWeight="SemiBold" FontSize="12"
+                               Foreground="{StaticResource Fg}" Margin="0,0,0,2" />
+                    <ContentControl Content="{Binding}"
+                                    ContentTemplate="{StaticResource LegendBlock}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+
+            <ItemsControl ItemsSource="{Binding OptionBars}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:OptionBarRow">
+                  <ItemsControl ItemsSource="{Binding Groups}" Margin="0,0,0,6">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:OptionGroupRow">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,18,0" Spacing="4"
+                                    VerticalAlignment="Center">
+                          <TextBlock Classes="barlab" Text="{Binding Label}"
+                                     IsVisible="{Binding HasLabel}" />
+                          <StackPanel IsVisible="{Binding IsSlider}" HorizontalAlignment="Center"
+                                      Spacing="3">
+                            <TextBlock Text="{Binding NowText}" FontSize="16"
+                                       Foreground="{StaticResource Fg}"
+                                       HorizontalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                              <Button Content="{Binding DecJa}"
+                                      Command="{Binding DecCommand}" />
+                              <Slider Width="150" Minimum="{Binding Min}" Maximum="{Binding Max}"
+                                      TickFrequency="{Binding Step}" IsSnapToTickEnabled="False"
+                                      Value="{Binding Value, Mode=TwoWay}" VerticalAlignment="Center" />
+                              <Button Content="{Binding IncJa}"
+                                      Command="{Binding IncCommand}" />
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding Picks}">
+                              <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                              </ItemsControl.ItemsPanel>
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:OptionPick">
+                                  <StackPanel HorizontalAlignment="Center">
+                                    <Button Content="{Binding Text}"
+                                            Classes.on="{Binding IsOn}"
+                                            Command="{Binding ChooseCommand}" />
+                                    <TextBlock Classes="note" Text="{Binding StdJa}" MinHeight="11"
+                                               HorizontalAlignment="Center" />
+                                  </StackPanel>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </StackPanel>
+                          <ItemsControl ItemsSource="{Binding Picks}" IsVisible="{Binding IsPickList}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:OptionPick">
+                                <Button Content="{Binding Text}"
+                                        Classes.on="{Binding IsOn}"
+                                        Command="{Binding ChooseCommand}" />
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Expander Header="読み方と根拠" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource Sub}">
+              <ItemsControl ItemsSource="{Binding DefsRows}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <TextBlock Classes="note" Text="{Binding}" TextWrapping="Wrap"
+                               Margin="0,0,0,4" MaxWidth="560" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Expander>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

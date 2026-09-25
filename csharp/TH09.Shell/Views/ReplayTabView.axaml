@@ -1,0 +1,224 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:TH09.Shell.ViewModels"
+             xmlns:data="using:TH09.Shell.Data"
+             x:Class="TH09.Shell.Views.ReplayTabView"
+             x:DataType="vm:ReplayTabViewModel">
+
+
+  <UserControl.Resources>
+    <DataTemplate x:Key="FilterOptionTemplate" x:DataType="vm:FilterOption">
+      <TextBlock Text="{Binding Label}" />
+    </DataTemplate>
+    <DataTemplate x:Key="NameOptionTemplate" x:DataType="vm:NameOption">
+      <TextBlock Text="{Binding Label}" />
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Opacity" Value="0.65" />
+    </Style>
+    <Style Selector="TextBlock.mark">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="TextBlock.num">
+      <Setter Property="TextAlignment" Value="Right" />
+    </Style>
+    <Style Selector="TextBlock.cell">
+      <Setter Property="Padding" Value="{StaticResource CellPad}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="Button.header">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="{StaticResource HeadPad}" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="Button.header.on">
+      <Setter Property="Foreground" Value="{StaticResource Fg}" />
+    </Style>
+    <Style Selector="Button.segment">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0,0,0,2" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Padding" Value="12,3,12,4" />
+      <Setter Property="Foreground" Value="{StaticResource Sub}" />
+    </Style>
+    <Style Selector="Button.segment.on">
+      <Setter Property="BorderBrush" Value="{StaticResource Fg}" />
+      <Setter Property="Foreground" Value="{StaticResource Fg}" />
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel LastChildFill="True">
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}" Padding="16,8,16,0">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+        <Button Grid.Column="0" Classes="segment" Classes.on="{Binding !IsMatch}"
+                Content="Story / Extra" Command="{Binding ShowStoryCommand}" />
+        <Button Grid.Column="1" Classes="segment" Classes.on="{Binding IsMatch}"
+                Content="Match" Command="{Binding ShowMatchCommand}" />
+        <TextBlock Grid.Column="3" Classes="note" Text="{Binding CountText}" VerticalAlignment="Center"
+                   Margin="0,0,10,6" />
+        <Button Grid.Column="4" Name="ReplayReload" Content="読み直す"
+                Command="{Binding ReloadCommand}" Margin="0,0,0,6" />
+      </Grid>
+    </Border>
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}"
+            Background="{StaticResource Band}" Padding="16,6">
+      <WrapPanel Orientation="Horizontal">
+
+        <ComboBox IsVisible="{Binding !IsMatch}" MinWidth="130" Margin="0,2,8,2"
+                  ItemsSource="{Binding DifficultyOptions}" SelectedItem="{Binding SelectedDifficulty}"
+                  ItemTemplate="{StaticResource FilterOptionTemplate}" />
+        <ComboBox IsVisible="{Binding !IsMatch}" MinWidth="130" Margin="0,2,8,2"
+                  ItemsSource="{Binding CharacterOptions}" SelectedItem="{Binding SelectedCharacter}"
+                  ItemTemplate="{StaticResource FilterOptionTemplate}" />
+
+        <ComboBox IsVisible="{Binding IsMatch}" MinWidth="150" Margin="0,2,8,2"
+                  ItemsSource="{Binding MatchModeOptions}" SelectedItem="{Binding SelectedMatchMode}"
+                  ItemTemplate="{StaticResource FilterOptionTemplate}" />
+        <ComboBox IsVisible="{Binding IsMatch}" MinWidth="130" Margin="0,2,8,2"
+                  ItemsSource="{Binding DifficultyOptions}" SelectedItem="{Binding SelectedDifficulty}"
+                  ItemTemplate="{StaticResource FilterOptionTemplate}" />
+        <ComboBox IsVisible="{Binding IsMatch}" MinWidth="140" Margin="0,2,8,2"
+                  ItemsSource="{Binding P1CharacterOptions}" SelectedItem="{Binding SelectedP1Character}"
+                  ItemTemplate="{StaticResource FilterOptionTemplate}" />
+        <ComboBox IsVisible="{Binding IsMatch}" MinWidth="150" Margin="0,2,8,2"
+                  ItemsSource="{Binding P2CharacterOptions}" SelectedItem="{Binding SelectedP2Character}"
+                  ItemTemplate="{StaticResource FilterOptionTemplate}" />
+        <ComboBox IsVisible="{Binding IsMatch}" MinWidth="170" Margin="0,2,8,2"
+                  ItemsSource="{Binding PlayerNameOptions}" SelectedItem="{Binding SelectedPlayerName}"
+                  ItemTemplate="{StaticResource NameOptionTemplate}" />
+
+        <CheckBox Content="自分のみ" IsChecked="{Binding OwnOnly}" Margin="0,2,8,2" />
+        <Button Content="絞り込みを戻す" Command="{Binding ClearFiltersCommand}" Margin="0,2,0,2" />
+      </WrapPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Rule}"
+            Background="{StaticResource Cushion1}" Padding="16,0">
+      <StackPanel Name="HeaderRow" Orientation="Horizontal">
+        <Border Width="{x:Static data:ReplayColumns.OwnMarkWidth}" />
+        <ItemsControl ItemsSource="{Binding Headers}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ReplayHeader">
+              <Button Classes="header" Classes.on="{Binding IsActive}" Width="{Binding Width}"
+                      Command="{Binding $parent[ItemsControl].((vm:ReplayTabViewModel)DataContext).SortByCommand}"
+                      CommandParameter="{Binding Key}">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" Classes="mark" Text="{Binding Arrow}"
+                           Width="{Binding LeftSeat}" />
+                <TextBlock Grid.Column="1" Text="{Binding Label}" Classes.num="{Binding RightAligned}" />
+                <TextBlock Grid.Column="2" Classes="mark" Text="{Binding Arrow}"
+                           Width="{Binding RightSeat}" />
+              </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Classes="label" Text="ラウンドごとの時間" IsVisible="{Binding ShowRoundTimes}"
+                   Width="{x:Static data:ReplayColumns.RoundTimesWidth}" Margin="{StaticResource HeadPad}" />
+      </StackPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Top" Padding="{StaticResource BandPad}"
+            IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" Padding="16,6"
+            IsVisible="{Binding RevealNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <TextBlock Text="{Binding RevealNote}" Classes="muted" TextWrapping="Wrap" />
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" Padding="16,6"
+            IsVisible="{Binding OwnNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <TextBlock Text="{Binding OwnNote}" Classes="muted" TextWrapping="Wrap" />
+    </Border>
+
+    <ListBox Classes="table" Name="RowsList"
+             ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}"
+             Background="Transparent" BorderThickness="0" Padding="16,0">
+      <ListBox.ContextFlyout>
+        <MenuFlyout>
+          <MenuItem Header="{x:Static data:ReplayFileLabels.RevealInExplorer}"
+                    Click="OnRevealReplayRow"
+                    ItemsSource="{Binding RevealOptions}">
+            <MenuItem.Styles>
+              <Style Selector="MenuItem > MenuItem" x:DataType="vm:RevealChoice">
+                <Setter Property="Header" Value="{Binding Label}" />
+              </Style>
+            </MenuItem.Styles>
+          </MenuItem>
+          <Separator />
+          <MenuItem Header="{x:Static data:ReplayOwnLabels.Menu}"
+                    IsEnabled="{Binding HasContextRow}">
+            <MenuItem Header="{Binding OwnAutoText}" Command="{Binding SetOwnAutoCommand}" />
+            <MenuItem Header="{Binding OwnForeignText}" Command="{Binding SetOwnForeignCommand}" />
+            <MenuItem Header="{Binding OwnP1Text}" Command="{Binding SetOwnP1Command}" />
+            <MenuItem Header="{Binding OwnP2Text}" Command="{Binding SetOwnP2Command}" />
+          </MenuItem>
+        </MenuFlyout>
+      </ListBox.ContextFlyout>
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="data:ReplayListRow">
+          <StackPanel Orientation="Horizontal">
+
+            <TextBlock Text="{Binding OwnMark}" Width="{x:Static data:ReplayColumns.OwnMarkWidth}"
+                       TextAlignment="Center" Margin="0,3"
+                       FontSize="11"
+                       Classes.p1="{Binding IsOwnP1}" Classes.p2="{Binding IsOwnP2}" />
+
+            <ItemsControl ItemsSource="{Binding Cells}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="data:ReplayCell">
+                  <TextBlock Classes="cell" Text="{Binding Text}" Width="{Binding Width}"
+                             Classes.num="{Binding RightAligned}"
+                             Classes.muted="{Binding IsMuted}"
+                             Classes.p1="{Binding IsP1}" Classes.p2="{Binding IsP2}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <ItemsControl ItemsSource="{Binding Rounds}" IsVisible="{Binding IsMatchRow}"
+                          Width="{x:Static data:ReplayColumns.RoundTimesWidth}" Margin="{StaticResource CellPad}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="data:RoundTime">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Text}"
+                               Classes.p1="{Binding IsP1Win}" Classes.p2="{Binding IsP2Win}" />
+                    <TextBlock Text=" / " Classes="muted" IsVisible="{Binding HasNext}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+  </DockPanel>
+</UserControl>

@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>$(Th09TargetFramework)</TargetFramework>
+    <RuntimeIdentifier>$(Th09RuntimeIdentifier)</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>$(Th09DriveAssemblyName)</AssemblyName>
+    <RootNamespace>TH09.Drive</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TH09.TickBus\TH09.TickBus.csproj" />
+    <ProjectReference Include="..\TH09.ProcView\TH09.ProcView.csproj" />
+    <ProjectReference Include="..\TH09.Record\TH09.Record.csproj" />
+    <ProjectReference Include="..\TH09.BusHost\TH09.BusHost.csproj" />
+    <ProjectReference Include="..\TH09.Replay\TH09.Replay.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <Th09Python Condition="'$(Th09Python)' == ''">python</Th09Python>
+    <Th09RecordScript>$(MSBuildThisFileDirectory)..\TH09.Record\tools\gen_record_constants.py</Th09RecordScript>
+  </PropertyGroup>
+
+  <Target Name="Th09GenerateRecordLabels" BeforeTargets="BeforeCompile"
+          Condition="'$(Th09GenerateConstants)' != 'false' And Exists('$(Th09RecordScript)')">
+    <PropertyGroup>
+      <Th09RecordGeneratedDir>$(BaseIntermediateOutputPath)generated3</Th09RecordGeneratedDir>
+    </PropertyGroup>
+    <Exec Command="&quot;$(Th09Python)&quot; &quot;$(Th09RecordScript)&quot; --out-dir &quot;$(Th09RecordGeneratedDir)&quot;"
+          EnvironmentVariables="PYTHONUTF8=1"
+          UseUtf8Encoding="Always"
+          StandardOutputImportance="normal"
+          ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="Th09RecordExitCode" />
+    </Exec>
+    <Error Condition="'$(Th09RecordExitCode)' != '0'"
+           Text="★表示名と link_method の生成に失敗した（終了コード $(Th09RecordExitCode)）。ビルドには Python が要る。場所を教えるなら -p:Th09Python=&lt;python.exe のパス&gt;。" />
+    <ItemGroup>
+      <Compile Include="$(Th09RecordGeneratedDir)\Th09RecordLabels.g.cs" />
+      <FileWrites Include="$(Th09RecordGeneratedDir)\Th09Record*.g.cs" />
+    </ItemGroup>
+  </Target>
+
+</Project>

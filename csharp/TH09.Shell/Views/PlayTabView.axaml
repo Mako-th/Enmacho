@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:TH09.Shell.ViewModels"
+             x:Class="TH09.Shell.Views.PlayTabView"
+             x:DataType="vm:PlayTabViewModel">
+
+
+  <DockPanel LastChildFill="True">
+
+    <Border DockPanel.Dock="Top"
+            BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}"
+            IsVisible="{Binding HasBand}">
+      <Border Background="{StaticResource Raised}"
+              BorderThickness="3,0,0,0" BorderBrush="{StaticResource Rule}"
+              Padding="{StaticResource BandPad}">
+        <DockPanel LastChildFill="True">
+          <TextBlock DockPanel.Dock="Right" Classes="note" VerticalAlignment="Center"
+                     Margin="16,0,0,0" Text="{Binding SourceText}"
+                     IsVisible="{Binding SourceText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+        </DockPanel>
+      </Border>
+    </Border>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Auto">
+      <Border Margin="10" Padding="12,10,14,14"
+              HorizontalAlignment="Left" VerticalAlignment="Top"
+              Background="{StaticResource Cushion1}"
+              BorderThickness="1" BorderBrush="{StaticResource Line}">
+        <SelectableTextBlock Name="PlayText"
+                             FontFamily="Consolas, Courier New, monospace"
+                             FontSize="{StaticResource PlayTextSize}" />
+      </Border>
+    </ScrollViewer>
+
+  </DockPanel>
+</UserControl>
