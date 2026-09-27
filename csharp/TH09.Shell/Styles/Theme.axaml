@@ -1,0 +1,140 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Styles.Resources>
+
+    <SolidColorBrush x:Key="Bg">#0f1117</SolidColorBrush>
+    <SolidColorBrush x:Key="Band">#151924</SolidColorBrush>
+    <SolidColorBrush x:Key="Line">#272c38</SolidColorBrush>
+    <SolidColorBrush x:Key="Rule">#3a4152</SolidColorBrush>
+    <SolidColorBrush x:Key="Cushion1">#1a1e28</SolidColorBrush>
+
+    <SolidColorBrush x:Key="Fg">#e7e9f0</SolidColorBrush>
+    <SolidColorBrush x:Key="Sub">#828a9e</SolidColorBrush>
+    <SolidColorBrush x:Key="Faint">#5c6377</SolidColorBrush>
+    <SolidColorBrush x:Key="Record">#ffffff</SolidColorBrush>
+
+    <SolidColorBrush x:Key="P1">#5bc8ff</SolidColorBrush>
+    <SolidColorBrush x:Key="P2">#ff8a5b</SolidColorBrush>
+
+    <SolidColorBrush x:Key="Raised">#252b3a</SolidColorBrush>
+
+    <SolidColorBrush x:Key="GroupBand">#141822</SolidColorBrush>
+
+    <SolidColorBrush x:Key="Scrim">#cc101010</SolidColorBrush>
+
+    <SolidColorBrush x:Key="BestBg">#22ffd54a</SolidColorBrush>
+    <SolidColorBrush x:Key="RecordingRed">#e0483c</SolidColorBrush>
+    <SolidColorBrush x:Key="SettingsSeparator">#80a0a8c0</SolidColorBrush>
+    <SolidColorBrush x:Key="SettingsHeading">#c0d0d8f0</SolidColorBrush>
+    <SolidColorBrush x:Key="StreamFg">#eef0f8</SolidColorBrush>
+
+    <SolidColorBrush x:Key="PlayTitle">#7fd1ff</SolidColorBrush>
+    <SolidColorBrush x:Key="Gain">#3ddc84</SolidColorBrush>
+    <SolidColorBrush x:Key="Loss">#ff6b6b</SolidColorBrush>
+
+    <Thickness x:Key="CellPad">10,3</Thickness>
+    <Thickness x:Key="HeadPad">10,4,10,5</Thickness>
+    <Thickness x:Key="BandPad">16,8</Thickness>
+    <x:Double x:Key="GroupGap">16</x:Double>
+    <x:Double x:Key="ButtonGap">8</x:Double>
+    <x:Double x:Key="RuleSide">12</x:Double>
+    <x:Double x:Key="RuleWidth">2</x:Double>
+
+    <x:Double x:Key="PlayTextSize">17.33</x:Double>
+
+    <x:Double x:Key="TabItemHeaderFontSize">16</x:Double>
+    <StaticResource x:Key="TabItemHeaderForegroundSelected" ResourceKey="Fg" />
+    <StaticResource x:Key="TabItemHeaderForegroundUnselected" ResourceKey="Sub" />
+    <StaticResource x:Key="TabItemHeaderSelectedPipeFill" ResourceKey="Fg" />
+
+  </Styles.Resources>
+
+  <Style Selector="TextBlock">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{StaticResource Fg}" />
+  </Style>
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{StaticResource Bg}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{StaticResource Fg}" />
+  </Style>
+  <Style Selector="TextBlock.note">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{StaticResource Sub}" />
+  </Style>
+  <Style Selector="TextBlock.label">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource Sub}" />
+  </Style>
+  <Style Selector="TextBlock.title">
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource Fg}" />
+  </Style>
+  <Style Selector="TextBlock.value">
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{StaticResource Fg}" />
+    <Setter Property="FontFeatures" Value="+tnum" />
+  </Style>
+  <Style Selector="TextBlock.faint">
+    <Setter Property="Foreground" Value="{StaticResource Faint}" />
+  </Style>
+  <Style Selector="TextBlock.record">
+    <Setter Property="Foreground" Value="{StaticResource Record}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="TextBlock.p1">
+    <Setter Property="Foreground" Value="{StaticResource P1}" />
+  </Style>
+  <Style Selector="TextBlock.p2">
+    <Setter Property="Foreground" Value="{StaticResource P2}" />
+  </Style>
+
+  <Style Selector="TabItem">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TabItem:pointerover">
+    <Setter Property="Foreground" Value="{StaticResource Fg}" />
+  </Style>
+
+  <Style Selector="Border.cushion1">
+    <Setter Property="Background" Value="{StaticResource Cushion1}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="ListBox.table ListBoxItem">
+    <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="Border.tablerow">
+    <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+
+  <Style Selector="Button">
+    <Setter Property="Background" Value="{StaticResource Cushion1}" />
+  </Style>
+  <Style Selector="Button:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource Raised}" />
+  </Style>
+  <Style Selector="Button.bar">
+    <Setter Property="Background" Value="{StaticResource Raised}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Rule}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Padding" Value="10,4" />
+  </Style>
+  <Style Selector="Button.bar:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource Rule}" />
+  </Style>
+  <Style Selector="Button.bar:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource Line}" />
+  </Style>
+
+
+</Styles>

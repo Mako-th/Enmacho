@@ -1,0 +1,65 @@
+<Project>
+  <PropertyGroup>
+    <Th09Dev>false</Th09Dev>
+    <Th09GenerateConstants>false</Th09GenerateConstants>
+  </PropertyGroup>
+
+
+  <PropertyGroup>
+    <Th09TargetFramework Condition="'$(Th09TargetFramework)' == ''">net10.0</Th09TargetFramework>
+    <Th09RuntimeIdentifier Condition="'$(Th09RuntimeIdentifier)' == ''">win-x64</Th09RuntimeIdentifier>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AvaloniaVersion>12.1.1</AvaloniaVersion>
+    <SkiaSharpVersion>3.119.4</SkiaSharpVersion>
+    <CommunityToolkitMvvmVersion>8.4.2</CommunityToolkitMvvmVersion>
+    <MicrosoftDataSqliteVersion>10.0.11</MicrosoftDataSqliteVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <EnableSourceLink>false</EnableSourceLink>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <LinkerArg Include="/PDBALTPATH:%25_PDB%25" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <Th09Dev Condition="'$(Th09Dev)' == ''">true</Th09Dev>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Th09ShellAssemblyName Condition="'$(Th09Dev)' == 'true'">th09_shell</Th09ShellAssemblyName>
+    <Th09ShellAssemblyName Condition="'$(Th09Dev)' != 'true'">EnmaCho</Th09ShellAssemblyName>
+    <Th09DriveAssemblyName Condition="'$(Th09Dev)' == 'true'">th09_drive</Th09DriveAssemblyName>
+    <Th09DriveAssemblyName Condition="'$(Th09Dev)' != 'true'">EnmaCho_drive</Th09DriveAssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Th09Python Condition="'$(Th09Python)' == ''">python</Th09Python>
+    <Th09ConstantsScript>$(MSBuildThisFileDirectory)tools\gen_cs_constants.py</Th09ConstantsScript>
+  </PropertyGroup>
+
+  <Target Name="Th09GenerateConstants" BeforeTargets="BeforeCompile"
+          Condition="'$(Th09GenerateConstants)' != 'false' And Exists('$(Th09ConstantsScript)')">
+    <PropertyGroup>
+      <Th09GeneratedDir>$(BaseIntermediateOutputPath)generated</Th09GeneratedDir>
+    </PropertyGroup>
+    <Exec Command="&quot;$(Th09Python)&quot; &quot;$(Th09ConstantsScript)&quot; --out-dir &quot;$(Th09GeneratedDir)&quot;"
+          EnvironmentVariables="PYTHONUTF8=1"
+          UseUtf8Encoding="Always"
+          StandardOutputImportance="normal"
+          ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="Th09GenerateExitCode" />
+    </Exec>
+    <Error Condition="'$(Th09GenerateExitCode)' != '0'"
+           Text="★列名・tick 語名・cp932 の写像表の生成に失敗した（終了コード $(Th09GenerateExitCode)）。ビルドには Python が要る。場所を教えるなら -p:Th09Python=&lt;python.exe のパス&gt;。" />
+    <ItemGroup>
+      <Compile Include="$(Th09GeneratedDir)\*.g.cs" />
+      <FileWrites Include="$(Th09GeneratedDir)\*.g.cs" />
+    </ItemGroup>
+  </Target>
+
+</Project>

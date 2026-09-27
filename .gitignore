@@ -1,0 +1,4 @@
+bin/
+obj/
+/native/th09_inject/build/
+/native/th09_tickhook/build/
