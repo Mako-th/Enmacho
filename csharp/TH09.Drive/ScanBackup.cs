@@ -173,8 +173,7 @@ public static class ScanBackup
             foreach (var file in s.Files)
             {
                 if (SourceGone(file)) { missing++; continue; }
-                var rel = IOPath.GetRelativePath(s.Base, file);
-                var how = CopyOne(file, IOPath.Combine(s.Destination, rel));
+                var how = CopyOne(file, CopyPathOf(s, file));
                 copied++;
                 if (s.Label == Layer0Label || s.Label == MainDbLabel)
                     w.Write("[copy] " + s.Label + ": " + how + Lf);
@@ -350,7 +349,7 @@ public static class ScanBackup
                                 live.Sum(f => new FileInfo(f).Length));
     }
 
-    private static string CommonBase(IReadOnlyList<string> files)
+    internal static string CommonBase(IReadOnlyList<string> files)
     {
         if (files.Count == 0) return "";
         var parts = IOPath.GetDirectoryName(files[0])!.Split(IOPath.DirectorySeparatorChar);
@@ -362,7 +361,28 @@ public static class ScanBackup
                    && string.Equals(parts[n], other[n], StringComparison.OrdinalIgnoreCase)) n++;
             parts = parts[..n];
         }
-        return string.Join(IOPath.DirectorySeparatorChar, parts);
+        var common = string.Join(IOPath.DirectorySeparatorChar, parts);
+        var root = IOPath.GetPathRoot(files[0]) ?? "";
+        if (common.Length >= root.Length) return common;
+        return files.All(f => string.Equals(IOPath.GetPathRoot(f), root, StringComparison.OrdinalIgnoreCase))
+            ? root
+            : "";
+    }
+
+    public static string CopyPathOf(BackupSource source, string file)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var rel = source.Base.Length == 0
+            ? file.Replace(":", "", StringComparison.Ordinal).TrimStart('\\', '/')
+            : IOPath.GetRelativePath(source.Base, file);
+        if (rel.Length == 0 || IOPath.IsPathRooted(rel) || rel == ".."
+            || rel.StartsWith(".." + IOPath.DirectorySeparatorChar, StringComparison.Ordinal)
+            || rel.StartsWith("../", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "控えの置き場が控えの外を指しました（元: " + file + " ／ 根: " + source.Base + "）");
+        }
+        return IOPath.Combine(source.Destination, rel);
     }
 
     private static string CopyOne(string source, string destination)

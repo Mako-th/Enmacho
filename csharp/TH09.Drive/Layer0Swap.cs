@@ -109,7 +109,7 @@ public static class Layer0Swap
             foreach (var file in s.Files)
             {
                 if (!isLiveDatabase && ScanBackup.SourceGone(file)) continue;
-                var copy = IOPath.Combine(s.Destination, IOPath.GetRelativePath(s.Base, file));
+                var copy = ScanBackup.CopyPathOf(s, file);
                 if (!File.Exists(copy)) return "控えに入っていません: " + file;
                 long originalBytes;
                 try

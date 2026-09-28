@@ -11,6 +11,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <Version>0.1.1</Version>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <AvaloniaVersion>12.1.1</AvaloniaVersion>
     <SkiaSharpVersion>3.119.4</SkiaSharpVersion>
     <CommunityToolkitMvvmVersion>8.4.2</CommunityToolkitMvvmVersion>

@@ -10,7 +10,7 @@ public sealed record ReplayWatchCycle(bool Scanning, int Seen, int Registered, i
 [SupportedOSPlatform("windows")]
 public sealed class ReplayWatchLoop
 {
-    public const string RegisteredPrefix = "登録: ";
+    public const string RegisteredPrefix = WatchLines.RegisteredPrefix;
 
     public const string HeldPrefix = "保留: ";
 

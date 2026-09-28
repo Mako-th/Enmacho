@@ -76,6 +76,25 @@ internal sealed partial class DriveControlViewModel : ObservableObject
     private bool scanSeenRunning;
     private bool pendingScanPlan;
 
+    internal event Action<DbUpdateCause>? DbUpdated;
+
+    private bool importSeenRunning;
+    private bool monitorSessionWasOpen;
+    private int watchRegisteredSeen;
+
+    private void RaiseDbUpdated(DbUpdateCause cause)
+    {
+        try
+        {
+            DbUpdated?.Invoke(cause);
+        }
+        catch (Exception ex)
+        {
+            LogSource.Error(Category, DbUpdateCauses.Label(cause) + "を受けた読み直しに失敗しました: "
+                                      + LogSource.Describe(ex));
+        }
+    }
+
     internal Func<DateTime> Clock { get; set; } = () => DateTime.UtcNow;
 
     internal Func<TimeSpan, Action, IDisposable> RestartScheduler { get; set; }
@@ -452,7 +471,13 @@ internal sealed partial class DriveControlViewModel : ObservableObject
     {
         try
         {
-            if (control.Snapshot()[LaunchKind.Monitor].IsRunning) return;
+            var now = control.Snapshot();
+            if (now[LaunchKind.Monitor].IsRunning) return;
+            if (now[LaunchKind.Scan].IsRunning)
+            {
+                stoppedMonitorForScan = true;
+                return;
+            }
             control.Start(LaunchKind.Monitor);
             restart.Started(Clock());
             restartNote = "";
@@ -677,7 +702,7 @@ internal sealed partial class DriveControlViewModel : ObservableObject
     private void OnStateChanged(DriveControlSnapshot snapshot)
     {
         if (Dispatcher.UIThread.CheckAccess()) Apply(snapshot);
-        else Dispatcher.UIThread.Post(() => Apply(snapshot));
+        else Dispatcher.UIThread.Post(() => Apply(control.Snapshot()));
     }
 
     private void Apply(DriveControlSnapshot snapshot)
@@ -722,6 +747,28 @@ internal sealed partial class DriveControlViewModel : ObservableObject
                         ?? "終了コード " + (scanState.LastExitCode?.ToString(
                             System.Globalization.CultureInfo.InvariantCulture) ?? "不明"));
             }
+            else
+            {
+                RaiseDbUpdated(DbUpdateCause.ScanEnded);
+            }
+        }
+        if (snapshot[LaunchKind.ImportOnly].IsRunning) importSeenRunning = true;
+        else if (importSeenRunning)
+        {
+            importSeenRunning = false;
+            RaiseDbUpdated(DbUpdateCause.ImportEnded);
+        }
+        if (monitor.SessionOpen) monitorSessionWasOpen = true;
+        else if (monitorSessionWasOpen)
+        {
+            monitorSessionWasOpen = false;
+            RaiseDbUpdated(DbUpdateCause.PlayEnded);
+        }
+        var watchRegistered = snapshot[LaunchKind.Watch].WatchRegisteredTotal;
+        if (watchRegistered != watchRegisteredSeen)
+        {
+            watchRegisteredSeen = watchRegistered;
+            RaiseDbUpdated(DbUpdateCause.ReplayRegistered);
         }
         LastResultText = failureText.Length > 0 ? failureText
             : monitor is { IsRunning: true, LastNoticeLine: { } notice }

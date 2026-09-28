@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using TH09.Analysis;
 using TH09.Shell.Data;
@@ -42,7 +43,7 @@ internal sealed record ReplayDetailHeaderCell(ReplayDetailColumn Column)
     public bool IsMuted => Column.Style == CellStyle.Muted;
 }
 
-internal sealed partial class ReplayDetailViewModel : ObservableObject, IInnerHistory
+internal sealed partial class ReplayDetailViewModel : ObservableObject, IInnerHistory, IReloadsOnDbUpdate
 {
     private readonly INavigationService _navigation;
 
@@ -267,21 +268,14 @@ internal sealed partial class ReplayDetailViewModel : ObservableObject, IInnerHi
             }
             else
             {
-                using var db = TrackerDb.OpenMainDb();
-                var detail = ReplayDetailQuery.Load(db, Request.ReplayId, Request.SessionId);
+                var read = ReadDetail(Request);
+                var detail = read.Detail;
                 Header = detail.Header;
                 StatusText = detail.Status;
                 _countedRounds = detail.CountedRounds;
                 foreach (var row in detail.Rows) Rows.Add(row);
-                if (detail.Header is ReplayDetailHeader h)
-                {
-                    var cols = ReplayDetailColumns.For(h.Section);
-                    foreach (var col in cols) Headers.Add(new ReplayDetailHeaderCell(col));
-                    RoundsWidth = TableSidePadding * 2 + cols.Sum(c => c.Width);
-                }
-                foreach (var f in ReplayDetailQuery.LoadFiles(
-                             db, Request.ReplayId, detail.Header?.SessionId ?? Request.SessionId))
-                    Files.Add(f);
+                if (detail.Header is ReplayDetailHeader h) BuildRoundHeaders(h);
+                foreach (var f in read.Files) Files.Add(f);
                 FilesNote = Files.Count == 0 ? ReplayFileLabels.NoFiles : null;
             }
         }
@@ -291,11 +285,111 @@ internal sealed partial class ReplayDetailViewModel : ObservableObject, IInnerHi
             FilesNote = StatusText;
         }
 
+        NotifyDetailLoaded();
+    }
+
+    private void NotifyDetailLoaded()
+    {
         OnPropertyChanged(nameof(IsMatch));
         OnPropertyChanged(nameof(HasHeader));
         OnPropertyChanged(nameof(HasFiles));
         OnPropertyChanged(nameof(Heading));
         OnPropertyChanged(nameof(CountNote));
+    }
+
+    private void BuildRoundHeaders(ReplayDetailHeader header)
+    {
+        var cols = ReplayDetailColumns.For(header.Section);
+        Headers.Clear();
+        foreach (var col in cols) Headers.Add(new ReplayDetailHeaderCell(col));
+        RoundsWidth = TableSidePadding * 2 + cols.Sum(c => c.Width);
+    }
+
+    private sealed record DetailRead(ReplayDetail Detail, List<ReplayFileRow> Files);
+
+    private static DetailRead ReadDetail(ReplayDetailRequest request)
+    {
+        using var db = TrackerDb.OpenMainDb();
+        var detail = ReplayDetailQuery.Load(db, request.ReplayId, request.SessionId, TrackerDb.Layer0DbPath);
+        var files = ReplayDetailQuery.LoadFiles(
+            db, request.ReplayId, detail.Header?.SessionId ?? request.SessionId);
+        return new DetailRead(detail, files);
+    }
+
+
+    public void ReloadOnDbUpdate(DbUpdateCause cause)
+    {
+        if (_reloadBusy || !TrackerDb.MainDbExists) return;
+        if (Request.SessionId is null && Request.ReplayId is null) return;
+        _reloadBusy = true;
+        var request = Request;
+        ReloadReading = Task.Run(() =>
+        {
+            DetailRead? read = null;
+            Exception? error = null;
+            try { read = ReadDetail(request); }
+            catch (Exception ex) { error = ex; }
+            Dispatcher.UIThread.Post(() => ApplyReload(cause, request, read, error));
+        });
+    }
+
+    private bool _reloadBusy;
+
+    internal Task? ReloadReading { get; private set; }
+
+    private void ApplyReload(DbUpdateCause cause, ReplayDetailRequest request, DetailRead? read, Exception? error)
+    {
+        _reloadBusy = false;
+        if (!request.Equals(Request)) return;
+        if (error is not null || read is null)
+        {
+            var why = error is null ? "中身が返りませんでした" : LogSource.Describe(error);
+            LogSource.Error("リプレイ詳細", "[DB 更新後の読み直し] " + why);
+            StatusText = "読み直しに失敗しました（表示は前のままです）: " + why;
+            return;
+        }
+        var detail = read.Detail;
+        var sectionBefore = Header?.Section;
+        Header = detail.Header;
+        StatusText = detail.Status;
+        _countedRounds = detail.CountedRounds;
+
+        if (detail.Header is ReplayDetailHeader h)
+        {
+            if (Headers.Count == 0 || sectionBefore != h.Section) BuildRoundHeaders(h);
+        }
+        else
+        {
+            Headers.Clear();
+            RoundsWidth = 0;
+        }
+
+        var requested = HitWindowRequestedFor;
+        SyncByIndex(Rows, detail.Rows);
+        if (requested is not null)
+            HitWindowRequestedFor = Rows.FirstOrDefault(r => r.RoundRecordId == requested.RoundRecordId)
+                                    ?? requested;
+
+        var keptFile = SelectedFile;
+        SyncByIndex(Files, read.Files);
+        if (keptFile is not null)
+            SelectedFile = Files.FirstOrDefault(f => f.ReplayId == keptFile.ReplayId
+                                                     && f.FullPath == keptFile.FullPath);
+        FilesNote = Files.Count == 0 ? ReplayFileLabels.NoFiles : null;
+
+        NotifyDetailLoaded();
+        LogSource.Info("リプレイ詳細", DbUpdateCauses.Label(cause) + "を受けて読み直した（ラウンド "
+                       + Rows.Count.ToString("N0", CultureInfo.InvariantCulture) + " 行）");
+    }
+
+    private static void SyncByIndex<T>(ObservableCollection<T> target, IReadOnlyList<T> desired)
+    {
+        for (var i = 0; i < desired.Count; i++)
+        {
+            if (i < target.Count) target[i] = desired[i];
+            else target.Add(desired[i]);
+        }
+        while (target.Count > desired.Count) target.RemoveAt(target.Count - 1);
     }
 
     public string? RevealDirectory(ReplayFileRow? row)

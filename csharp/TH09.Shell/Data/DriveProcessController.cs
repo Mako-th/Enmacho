@@ -10,7 +10,8 @@ internal sealed record DriveProcessState(LaunchKind Kind, bool IsRunning, bool C
                                          string? LastImportResultLine = null,
                                          ScanProgressLines.ScanPlanSummary? LastScanPlan = null,
                                          ScanProgressLines.BatchOutcome? LastScanBatchResult = null,
-                                         string? LastScanStopReason = null);
+                                         string? LastScanStopReason = null,
+                                         int WatchRegisteredTotal = 0);
 
 internal sealed record DriveControlSnapshot(bool IsDisposed, IReadOnlyList<DriveProcessState> Processes)
 {
@@ -33,6 +34,7 @@ internal sealed class DriveProcessController : IDisposable
     private readonly Dictionary<LaunchKind, ScanProgressLines.ScanPlanSummary?> scanPlans = [];
     private readonly Dictionary<LaunchKind, ScanProgressLines.BatchOutcome?> scanBatchResults = [];
     private readonly Dictionary<LaunchKind, string?> scanStopReasons = [];
+    private readonly Dictionary<LaunchKind, int> watchRegisteredTotals = [];
     private bool disposed;
 
     public DriveProcessController() : this(new LaunchProcessLauncher()) { }
@@ -167,6 +169,12 @@ internal sealed class DriveProcessController : IDisposable
                 scanStopReasons[kind] = stopReason;
                 changed = true;
             }
+            if (IsWatchRegistered(line))
+            {
+                watchRegisteredTotals.TryGetValue(kind, out var total);
+                watchRegisteredTotals[kind] = total + 1;
+                changed = true;
+            }
         }
         LogSource.Info(Category, Name(kind) + ": " + line);
         if (changed) Publish();
@@ -177,6 +185,9 @@ internal sealed class DriveProcessController : IDisposable
 
     private static bool IsNotice(string line)
         => OperatingSystem.IsWindows() && MonitorLines.IsNotice(line);
+
+    private static bool IsWatchRegistered(string line)
+        => OperatingSystem.IsWindows() && WatchLines.IsRegistered(line);
 
     private static ScanProgressLines.Mark? ScanProgress(string line)
         => OperatingSystem.IsWindows() ? ScanProgressLines.TryParse(line) : null;
@@ -262,10 +273,12 @@ internal sealed class DriveProcessController : IDisposable
             scanPlans.TryGetValue(kind, out var scanPlan);
             scanBatchResults.TryGetValue(kind, out var scanBatchResult);
             scanStopReasons.TryGetValue(kind, out var scanStopReason);
+            watchRegisteredTotals.TryGetValue(kind, out var watchRegistered);
             states[(int)kind] = new DriveProcessState(kind, running, !disposed && !running, code,
                                                      failureLine, intended, running && open, notice,
                                                      running ? progress : null, importResult,
-                                                     scanPlan, scanBatchResult, scanStopReason);
+                                                     scanPlan, scanBatchResult, scanStopReason,
+                                                     watchRegistered);
         }
         return new DriveControlSnapshot(disposed, states);
     }

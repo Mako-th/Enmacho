@@ -53,8 +53,10 @@ internal sealed record StatsAggHeader(StatsAggColumn Column, bool IsActive, bool
 
 internal sealed record StatsCharChip(int Id, string Label, bool IsFoe, bool IsSelected);
 
-internal sealed partial class StatsTabViewModel : TabViewModelBase, IInnerHistory
+internal sealed partial class StatsTabViewModel : TabViewModelBase, IInnerHistory, IReloadsOnDbUpdate
 {
+    private const string Category = "統計";
+
     public bool TryGoBack()
     {
         if (!CanGoBack) return false;
@@ -437,11 +439,90 @@ internal sealed partial class StatsTabViewModel : TabViewModelBase, IInnerHistor
         {
             StatusText = "本体 DB を読めませんでした: " + ex.Message;
         }
+        ResetNavigation();
+        Apply();
+    }
+
+    private void ResetNavigation()
+    {
         _history.Clear();
         _history.Add(new StatsNavState(Section, []));
         _historyAt = 0;
         _path.Clear();
+    }
+
+    public void ReloadOnDbUpdate(DbUpdateCause cause)
+    {
+        if (_reloadBusy || !TrackerDb.MainDbExists) return;
+        _reloadBusy = true;
+        ReloadReading = Task.Run(() =>
+        {
+            StatsPayload? payload = null;
+            Exception? error = null;
+            try
+            {
+                using var db = TrackerDb.OpenMainDb();
+                payload = StatsLeafQuery.LoadAll(db);
+            }
+            catch (Exception ex) { error = ex; }
+            Dispatcher.UIThread.Post(() => ApplyReload(cause, payload, error));
+        });
+    }
+
+    private bool _reloadBusy;
+
+    internal Task? ReloadReading { get; private set; }
+
+    private void ApplyReload(DbUpdateCause cause, StatsPayload? payload, Exception? error)
+    {
+        _reloadBusy = false;
+        if (error is not null || payload is null)
+        {
+            var why = error is null ? "中身が返りませんでした" : LogSource.Describe(error);
+            LogSource.Error(Category, "[DB 更新後の読み直し] " + why);
+            StatusText = "読み直しに失敗しました（表示は前のままです）: " + why;
+            return;
+        }
+        _payload = payload;
+        _readAt = DateTime.Now;
+        StatusText = null;
+        var branchAlive = _path.Count == 0 || BranchHasRows(payload, Section, _path);
+        var pruned = 0;
+        if (!branchAlive) ResetNavigation();
+        else pruned = PruneDeadHistory(payload);
         Apply();
+        LogSource.Info(Category, DbUpdateCauses.Label(cause) + "を受けて読み直した"
+                       + (branchAlive ? "" : "（降りていた枝が無くなったので区分の先頭へ戻した）")
+                       + (pruned > 0
+                           ? "（戻る/進むの履歴から 0 件になった段を "
+                             + pruned.ToString(CultureInfo.InvariantCulture) + " つ抜いた）"
+                           : ""));
+    }
+
+    private static bool BranchHasRows(StatsPayload payload, StatsSection section, IReadOnlyList<string> path)
+        => new StatsView(payload, section, path, foreign: true, StatsCharFilter.All).RowCount > 0;
+
+    private int PruneDeadHistory(StatsPayload payload)
+    {
+        var kept = new List<StatsNavState>(_history.Count);
+        var at = -1;
+        for (var i = 0; i < _history.Count; i++)
+        {
+            var state = _history[i];
+            var current = i == _historyAt;
+            var alive = current || state.Path.Length == 0 || BranchHasRows(payload, state.Section, state.Path);
+            if (!alive) continue;
+            var same = kept.Count > 0 && kept[^1].Section == state.Section
+                       && kept[^1].Path.SequenceEqual(state.Path, StringComparer.Ordinal);
+            if (!same) kept.Add(state);
+            if (current) at = kept.Count - 1;
+        }
+        var removed = _history.Count - kept.Count;
+        if (removed == 0) return 0;
+        _history.Clear();
+        _history.AddRange(kept);
+        _historyAt = at;
+        return removed;
     }
 
 

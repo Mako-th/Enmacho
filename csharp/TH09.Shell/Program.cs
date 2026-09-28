@@ -44,6 +44,21 @@ internal static class Program
             }
             return Data.DriveControlDump.RunBarDist();
         }
+        if (args.Length >= 1 && args[0] == Data.DriveControlDump.DbUpdateReloadFlag)
+        {
+            if (args.Length != 4)
+            {
+                Console.Error.WriteLine("使い方: " + exe + " " + Data.DriveControlDump.DbUpdateReloadFlag
+                                        + " <走査前の db> <走査後の db> <枝が消えた db>");
+                return 2;
+            }
+            if (!OperatingSystem.IsWindows())
+            {
+                Console.Error.WriteLine("上段の診断は Windows でだけ動きます（設定を読むため）。");
+                return 3;
+            }
+            return Data.DriveControlDump.RunDbUpdateReload(args[1], args[2], args[3]);
+        }
         if (args.Length == 1 && args[0] == Data.ScanArgsDump.Flag)
             return Data.ScanArgsDump.Run();
         if (args.Length is 2 or 3 && args[0] == Data.AppSettingsFormDump.Flag)
@@ -152,6 +167,8 @@ internal static class Program
             return Data.RevealChoicesDump.Run(args[1], args[2]);
         if (args.Length == 2 && args[0] == Data.HistorySignatureDump.Flag)
             return Data.HistorySignatureDump.Run(args[1]);
+        if (args.Length == 3 && args[0] == Data.UpdateNoticeDump.Flag)
+            return Data.UpdateNoticeDump.Run(args[1], args[2]);
 
         var unknown = new List<string>();
         for (int i = 0; i < args.Length; i++)
@@ -212,6 +229,9 @@ internal static class Program
                 Console.WriteLine("                                  右クリックの献立の候補（置き場所が複数のとき）を TSV で吐く（★窓を開かない）");
                 Console.WriteLine("  " + exe + " --dump-history-signature <db>");
                 Console.WriteLine("                                  履歴の自動更新が見るフィンガープリントを吐く（★窓を開かない）");
+                Console.WriteLine("  " + exe + " --dump-update-notice <json> <いまの版>");
+                Console.WriteLine("                                  「新しい版がある」帯を出すかを判定して吐く（★窓を開かない・");
+                Console.WriteLine("                                  ★ネットへ出ない）");
                 Console.WriteLine("  " + exe + " --config <config.json>");
                 Console.WriteLine("                                  設定の読み先だけを差し替える（★1 バイトも書かない。");
                 Console.WriteLine("                                  ★--selftest と合わせて、合成の設定で絵を撮るための口）");

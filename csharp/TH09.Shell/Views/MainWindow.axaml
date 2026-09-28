@@ -75,7 +75,7 @@
     <DataTemplate DataType="vm:TimelineViewModel"><views:TimelineView /></DataTemplate>
   </Window.DataTemplates>
 
-  <Grid RowDefinitions="Auto,*">
+  <Grid RowDefinitions="Auto,Auto,*">
 
     <Border Name="DriveBar" Grid.Row="0"
             BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}"
@@ -163,7 +163,20 @@
       </DockPanel>
     </Border>
 
-    <Grid Grid.Row="1">
+    <Border Name="UpdateNoticeBar" Grid.Row="1"
+            IsVisible="{Binding IsUpdateNoticeVisible}"
+            BorderThickness="0,0,0,1" BorderBrush="{StaticResource Line}"
+            Background="{StaticResource GroupBand}" Padding="10,6">
+      <DockPanel LastChildFill="True">
+        <Button Name="UpdateNoticeClose" Classes="bar" Content="閉じる" DockPanel.Dock="Right"
+                Command="{Binding CloseUpdateNoticeCommand}" />
+        <TextBlock Name="UpdateNoticeText" Text="{Binding UpdateNoticeText}"
+                   VerticalAlignment="Center" Margin="0,0,10,0"
+                   TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Row="2">
 
     <TabControl Name="Tabs"
                 ItemsSource="{Binding Tabs}"
@@ -182,7 +195,7 @@
 
     </Grid>
 
-    <Border Name="ScanForm" Grid.Row="0" Grid.RowSpan="2"
+    <Border Name="ScanForm" Grid.Row="0" Grid.RowSpan="3"
             IsVisible="{Binding Drive.IsScanFormOpen}" Background="{StaticResource Scrim}">
       <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
               CornerRadius="4" Padding="20" MaxWidth="760" MaxHeight="720"
@@ -417,7 +430,7 @@
       </Border>
     </Border>
 
-    <Border Name="SettingsForm" Grid.Row="0" Grid.RowSpan="2"
+    <Border Name="SettingsForm" Grid.Row="0" Grid.RowSpan="3"
             IsVisible="{Binding Drive.IsSettingsFormOpen}" Background="{StaticResource Scrim}">
       <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
               CornerRadius="4" Padding="20" MaxWidth="760" MaxHeight="720"
@@ -924,7 +937,7 @@
     </Border>
 
 
-    <Border Name="ScanAddDirectoryOutOfRangeConfirm" Grid.Row="0" Grid.RowSpan="2"
+    <Border Name="ScanAddDirectoryOutOfRangeConfirm" Grid.Row="0" Grid.RowSpan="3"
             IsVisible="{Binding Drive.Scan.IsOutOfRangeConfirmOpen}" Background="{StaticResource Scrim}">
       <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
               CornerRadius="4" Padding="20" MaxWidth="520"
@@ -944,7 +957,7 @@
       </Border>
     </Border>
 
-    <Border Name="ScanConfirm" Grid.Row="0" Grid.RowSpan="2"
+    <Border Name="ScanConfirm" Grid.Row="0" Grid.RowSpan="3"
             IsVisible="{Binding Drive.IsScanConfirmOpen}" Background="{StaticResource Scrim}">
       <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
               CornerRadius="4" Padding="20" MaxWidth="560"
@@ -963,7 +976,7 @@
       </Border>
     </Border>
 
-    <Border Name="ScanPlanWindow" Grid.Row="0" Grid.RowSpan="2"
+    <Border Name="ScanPlanWindow" Grid.Row="0" Grid.RowSpan="3"
             IsVisible="{Binding Drive.IsScanPlanOpen}" Background="{StaticResource Scrim}">
       <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
               CornerRadius="4" Padding="20" MaxWidth="560"
@@ -985,7 +998,7 @@
       </Border>
     </Border>
 
-    <Border Name="ImportConfirm" Grid.Row="0" Grid.RowSpan="2"
+    <Border Name="ImportConfirm" Grid.Row="0" Grid.RowSpan="3"
             IsVisible="{Binding Drive.IsImportConfirmOpen}" Background="{StaticResource Scrim}">
       <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
               CornerRadius="4" Padding="20" MaxWidth="520"
@@ -1003,7 +1016,7 @@
       </Border>
     </Border>
 
-    <Border Name="MonitorStopConfirm" Grid.Row="0" Grid.RowSpan="2"
+    <Border Name="MonitorStopConfirm" Grid.Row="0" Grid.RowSpan="3"
             IsVisible="{Binding Drive.IsMonitorStopConfirmOpen}" Background="{StaticResource Scrim}">
       <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
               CornerRadius="4" Padding="20" MaxWidth="520"
@@ -1021,7 +1034,7 @@
       </Border>
     </Border>
 
-    <Border Name="FirstRunDbConfirm" Grid.Row="0" Grid.RowSpan="2"
+    <Border Name="FirstRunDbConfirm" Grid.Row="0" Grid.RowSpan="3"
             IsVisible="{Binding Drive.IsFirstRunDbOpen}" Background="{StaticResource Scrim}">
       <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
               CornerRadius="4" Padding="20" MaxWidth="560"

@@ -67,6 +67,8 @@ internal partial class App : Application
                 shell.Drive.OfferFirstRunDb(Data.TrackerDb.MainDbPath);
                 shell.Drive.AutoImportExisting(Data.TrackerDb.MainDbPath);
                 shell.Drive.AllowAutoMonitorStart();
+                _ = Data.UpdateCheck.RunAsync(Data.UpdateNotice.CurrentVersionText,
+                                              () => shell.IsUpdateNoticeVisible = true);
             }
 
             if (AutoPlay is { } ap)

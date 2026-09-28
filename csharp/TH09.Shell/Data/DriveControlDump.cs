@@ -16,6 +16,8 @@ internal static class DriveControlDump
 
     public const string BarDistFlag = "--dump-drive-bar-dist";
 
+    public const string DbUpdateReloadFlag = "--dump-db-update-reload";
+
     public static int Run()
     {
         using var stdout = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false));
@@ -962,7 +964,39 @@ internal static class DriveControlDump
             Dispatcher.UIThread.RunJobs();
             bool restarted = fake.StartCount(LaunchKind.Monitor) == 2 && bar.IsMonitorRunning;
 
-            return autoStarted && stoppedForScan && notYetRestarted && restarted;
+            fake.Last(LaunchKind.Monitor).NotifyExitOffThread = true;
+            bar.OpenScanCommand.Execute(null);
+            bar.RequestScanRunCommand.Execute(null);
+            bar.ConfirmScanCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            bool lateNoticeKeepsOff = fake.StartCount(LaunchKind.Monitor) == 2 && !bar.IsMonitorRunning
+                                      && fake.StartCount(LaunchKind.Scan) == 2 && bar.IsScanRunning;
+            fake.Last(LaunchKind.Scan).Exit(0);
+            Dispatcher.UIThread.RunJobs();
+            bool lateNoticeRestarted = fake.StartCount(LaunchKind.Monitor) == 3 && bar.IsMonitorRunning;
+
+            var fired = new List<Action>();
+            bar.RestartScheduler = (_, action) =>
+            {
+                fired.Add(action);
+                return new NoopDisposable();
+            };
+            fake.Last(LaunchKind.Monitor).Exit(1);
+            bool restartScheduled = fired.Count == 1 && !bar.IsMonitorRunning;
+            bar.OpenScanCommand.Execute(null);
+            bar.RequestScanRunCommand.Execute(null);
+            bar.ConfirmScanCommand.Execute(null);
+            if (fired.Count > 0) fired[0]();
+            Dispatcher.UIThread.RunJobs();
+            bool pendingWaitsForScan = fake.StartCount(LaunchKind.Monitor) == 3 && !bar.IsMonitorRunning
+                                       && fake.StartCount(LaunchKind.Scan) == 3 && bar.IsScanRunning;
+            fake.Last(LaunchKind.Scan).Exit(0);
+            Dispatcher.UIThread.RunJobs();
+            bool pendingRestartedAfterScan = fake.StartCount(LaunchKind.Monitor) == 4 && bar.IsMonitorRunning;
+
+            return autoStarted && stoppedForScan && notYetRestarted && restarted
+                   && lateNoticeKeepsOff && lateNoticeRestarted
+                   && restartScheduled && pendingWaitsForScan && pendingRestartedAfterScan;
         }
         finally
         {
@@ -1223,6 +1257,366 @@ internal static class DriveControlDump
         if (bar.Scan.IsOutOfRangeConfirmOpen) bar.Scan.ConfirmAddOutOfRangeCommand.Execute(null);
     }
 
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public static int RunDbUpdateReload(string dbBefore, string dbAfter, string dbGone)
+    {
+        using var stdout = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false));
+        var dir = Path.Combine(Path.GetTempPath(), "th09_shell_db_update_reload_" + Environment.ProcessId);
+        try
+        {
+            foreach (var p in new[] { dbBefore, dbAfter, dbGone })
+            {
+                if (HistoryMaintenance.PointsAtRealData(p, null))
+                {
+                    Console.Error.WriteLine(
+                        "本物の記録の場所を指しています（本体 DB のフォルダ）。"
+                        + "この口は合成の DB だけを受け付けます: " + p);
+                    return 3;
+                }
+                if (!File.Exists(p))
+                {
+                    Console.Error.WriteLine("DB が在りません: " + p);
+                    return 2;
+                }
+            }
+
+            AppBuilder.Configure<App>().UsePlatformDetect().SetupWithoutStarting();
+            Directory.CreateDirectory(dir);
+            var config = Path.Combine(dir, "config.json");
+            File.WriteAllText(config, "{\"" + ConfigStore.WatchReplaysWithMonitorKey + "\": true, \""
+                                      + ConfigStore.AutoImportOnStartKey + "\": true}");
+            AppSettingsSource.ReadFrom(config);
+            LogSource.Clear();
+            TrackerDb.MainDbPath = dbBefore;
+            var noLayer0 = Path.Combine(dir, "no_layer0.sqlite3");
+            TrackerDb.Layer0DbPath = noLayer0;
+
+            var fake = new FakeLauncher();
+            using var shell = ShellViewModel.Create(fake);
+            var bar = shell.Drive;
+            AddDirectoryConfirmed(bar, @"C:\synthetic_gate\replay");
+            var replay = shell.Tabs.OfType<ReplayTabViewModel>().Single();
+            var stats = shell.Tabs.OfType<StatsTabViewModel>().Single();
+            var history = shell.Tabs.OfType<HistoryTabViewModel>().Single();
+            var detail = shell.Detail;
+
+            string Ids() => string.Join(",", replay.Rows.Select(r => r.ReplayId));
+            string Crumbs() => string.Join(">", stats.Crumbs.Select(c => c.Label));
+            void Settle()
+            {
+                replay.ReloadReading?.Wait();
+                stats.ReloadReading?.Wait();
+                detail.ReloadReading?.Wait();
+                Dispatcher.UIThread.RunJobs();
+            }
+            void StartScanRun()
+            {
+                bar.OpenScanCommand.Execute(null);
+                bar.RequestScanRunCommand.Execute(null);
+                bar.ConfirmScanCommand.Execute(null);
+            }
+            void FinishScanRun(int exitCode)
+            {
+                fake.Last(LaunchKind.Scan).Exit(exitCode);
+                Settle();
+            }
+
+            replay.OwnOnly = true;
+            replay.SelectedCharacter = replay.CharacterOptions.First(o => o.Value == 3);
+            replay.SortByCommand.Execute(ReplaySortKey.DateTime);
+            stats.ShowSectionCommand.Execute(StatsSection.MatchCpu);
+            stats.IncludeForeign = true;
+            foreach (var pick in new[] { "1", "3" })
+            {
+                stats.SelectedGroup = stats.Groups.FirstOrDefault(g => g.Key == pick);
+                Dispatcher.UIThread.RunJobs();
+            }
+            var crumbsBefore = Crumbs();
+            var historyBefore = stats.HistoryCount;
+            var idsBefore = Ids();
+            var countBefore = stats.CountText;
+            bool positioned = replay.OwnOnly && replay.SelectedCharacter?.Value == 3
+                              && replay.SortKey == ReplaySortKey.DateTime && !replay.SortDescending
+                              && stats.Crumbs.Count >= 3 && stats.HistoryCount >= 3
+                              && stats.Section == StatsSection.MatchCpu && stats.IncludeForeign;
+            WriteText(stdout, "rows-before", replay.Rows.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            WriteText(stdout, "replay-ids-before", idsBefore);
+            WriteText(stdout, "stats-count-before", countBefore);
+            WriteText(stdout, "stats-crumbs-before", crumbsBefore);
+            Write(stdout, "positioned", positioned);
+
+            TrackerDb.MainDbPath = dbAfter;
+            StartScanRun();
+            Settle();
+            Write(stdout, "not-reloaded-while-running",
+                  bar.IsScanRunning && Ids() == idsBefore && stats.CountText == countBefore);
+
+            FinishScanRun(0);
+            var idsAfter = Ids();
+            var countAfter = stats.CountText;
+            WriteText(stdout, "replay-ids-after-scan", idsAfter);
+            WriteText(stdout, "stats-count-after-scan", countAfter);
+            Write(stdout, "replay-reloaded", idsAfter != idsBefore && string.IsNullOrEmpty(replay.StatusText));
+            Write(stdout, "stats-reloaded", countAfter != countBefore && string.IsNullOrEmpty(stats.StatusText));
+            Write(stdout, "replay-position-kept",
+                  replay.OwnOnly && replay.SelectedCharacter?.Value == 3 && !replay.IsMatch
+                  && replay.SortKey == ReplaySortKey.DateTime && !replay.SortDescending);
+            Write(stdout, "stats-position-kept",
+                  stats.Section == StatsSection.MatchCpu && stats.IncludeForeign
+                  && Crumbs() == crumbsBefore && stats.HistoryCount == historyBefore
+                  && stats.Crumbs.Count >= 3);
+            WriteText(stdout, "stats-crumbs-after-scan", Crumbs());
+
+            TrackerDb.MainDbPath = dbGone;
+            bar.OpenScanCommand.Execute(null);
+            bar.PlanScanCommand.Execute(null);
+            FinishScanRun(0);
+            bool planKeeps = Ids() == idsAfter && stats.CountText == countAfter;
+            bar.CloseScanPlanCommand.Execute(null);
+            Write(stdout, "plan-does-not-reload", planKeeps);
+
+            StartScanRun();
+            FinishScanRun(1);
+            var idsGone = Ids();
+            WriteText(stdout, "replay-ids-after-failure", idsGone);
+            WriteText(stdout, "stats-count-after-failure", stats.CountText);
+            Write(stdout, "failed-scan-reloads", idsGone != idsAfter && stats.CountText != countAfter);
+            Write(stdout, "replay-filter-kept-on-failure",
+                  replay.OwnOnly && replay.SelectedCharacter?.Value == 3 && !replay.SortDescending);
+            Write(stdout, "stats-vanished-branch-resets",
+                  stats.Crumbs.Count == 1 && stats.HistoryCount == 1
+                  && stats.Section == StatsSection.MatchCpu && stats.IncludeForeign
+                  && string.IsNullOrEmpty(stats.StatusText));
+
+            var missing = Path.Combine(dir, "no_such.sqlite3");
+            TrackerDb.MainDbPath = missing;
+            StartScanRun();
+            FinishScanRun(0);
+            Write(stdout, "missing-db-noop",
+                  Ids() == idsGone && string.IsNullOrEmpty(replay.StatusText)
+                  && string.IsNullOrEmpty(stats.StatusText));
+
+            var bad = Path.Combine(dir, "bad.sqlite3");
+            File.WriteAllText(bad, "これは SQLite ではありません");
+            TrackerDb.MainDbPath = bad;
+            StartScanRun();
+            FinishScanRun(0);
+            Write(stdout, "unreadable-keeps-rows", Ids() == idsGone && replay.Rows.Count > 0);
+            Write(stdout, "unreadable-says-why",
+                  replay.StatusText is { } rs && rs.StartsWith("読み直しに失敗", StringComparison.Ordinal)
+                  && stats.StatusText is { } ss && ss.StartsWith("読み直しに失敗", StringComparison.Ordinal));
+
+            void Swap(string db) => TrackerDb.MainDbPath = db;
+            void ReloadViaScan(string db, bool detailOpen = false)
+            {
+                Swap(db);
+                StartScanRun();
+                shell.IsDetailOpen = detailOpen;
+                FinishScanRun(0);
+            }
+            string Count() => stats.CountText;
+
+            ReloadViaScan(dbBefore);
+            stats.ShowSectionCommand.Execute(StatsSection.MatchCpu);
+            foreach (var pick in new[] { "1", "3" })
+            {
+                stats.SelectedGroup = stats.Groups.FirstOrDefault(g => g.Key == pick);
+                Dispatcher.UIThread.RunJobs();
+            }
+            stats.GoToDepthCommand.Execute(1);
+            var histBefore = stats.HistoryCount;
+            bool histBuilt = histBefore >= 4 && stats.CurrentPath.Count == 1 && stats.CurrentPath[0] == "1";
+            WriteText(stdout, "stats-history-before", histBefore.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            Write(stdout, "stats-history-built", histBuilt);
+            ReloadViaScan(dbGone);
+            WriteText(stdout, "stats-history-after-gone", stats.HistoryCount.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            Write(stdout, "stats-history-drops-dead-step",
+                  histBuilt && stats.HistoryCount == 2 && stats.CurrentPath.Count == 1
+                  && stats.CurrentPath[0] == "1" && string.IsNullOrEmpty(stats.StatusText));
+            Write(stdout, "stats-history-back-goes-to-head",
+                  stats.CanGoBack && !stats.CanGoForward && GoBackAndPathIsEmpty(stats));
+            stats.GoForwardCommand.Execute(null);
+            var histAlive = stats.HistoryCount;
+            ReloadViaScan(dbAfter);
+            Write(stdout, "stats-history-intact-when-all-alive",
+                  histAlive == 2 && stats.HistoryCount == histAlive && stats.CurrentPath.Count == 1);
+            stats.ShowSectionCommand.Execute(StatsSection.MatchCpu);
+            stats.GoToDepthCommand.Execute(0);
+
+            ReloadViaScan(dbAfter);
+            var idsAfterBase = Ids();
+            var countAfterBase = Count();
+            Swap(dbBefore);
+            bar.RequestImportCommand.Execute(null);
+            bar.ConfirmImportCommand.Execute(null);
+            Settle();
+            Write(stdout, "import-not-reloaded-while-running",
+                  bar.IsImportRunning && Ids() == idsAfterBase && Count() == countAfterBase);
+            fake.Last(LaunchKind.ImportOnly).Exit(0);
+            Settle();
+            var idsImported = Ids();
+            WriteText(stdout, "replay-ids-after-import", idsImported);
+            Write(stdout, "import-end-reloads", idsImported != idsAfterBase && Count() != countAfterBase
+                                                && string.IsNullOrEmpty(replay.StatusText));
+            Swap(dbAfter);
+            bar.AutoImportExisting(TrackerDb.MainDbPath);
+            bool autoStarted = bar.IsImportRunning;
+            fake.Last(LaunchKind.ImportOnly).Exit(0);
+            Settle();
+            var idsAutoImported = Ids();
+            WriteText(stdout, "replay-ids-after-auto-import", idsAutoImported);
+            Write(stdout, "auto-import-end-reloads",
+                  autoStarted && idsAutoImported != idsImported && Count() == countAfterBase);
+
+            Swap(dbBefore);
+            bar.ToggleMonitorCommand.Execute(null);
+            var monitor = fake.Last(LaunchKind.Monitor);
+            monitor.Emit(MonitorLines.GameFound(4321));
+            monitor.Emit(MonitorLines.SessionOpenedPrefix + "30 (…)");
+            monitor.Emit("記録中: tick 1,200 を書きました");
+            monitor.Emit("記録中: tick 2,400 を書きました");
+            Settle();
+            Write(stdout, "play-not-reloaded-while-open",
+                  bar.IsMonitorSessionOpen && Ids() == idsAutoImported && Count() == countAfterBase);
+            monitor.Emit(MonitorLines.SessionClosed(30));
+            Settle();
+            var idsPlayed = Ids();
+            WriteText(stdout, "replay-ids-after-play", idsPlayed);
+            Write(stdout, "play-end-reloads", idsPlayed != idsAutoImported && Count() != countAfterBase);
+
+            Swap(dbAfter);
+            monitor.Emit(MonitorLines.GameGone);
+            Settle();
+            Write(stdout, "game-gone-without-session-noop", Ids() == idsPlayed);
+            monitor.Emit(MonitorLines.SessionOpenedPrefix + "31 (…)");
+            monitor.Emit(MonitorLines.GameGone);
+            Settle();
+            Write(stdout, "game-gone-closes-and-reloads", Ids() == idsAutoImported);
+
+            bool watchRunning = fake.StartCount(LaunchKind.Watch) == 1 && bar.IsWatchRunning;
+            var watch = fake.Last(LaunchKind.Watch);
+            Swap(dbBefore);
+            watch.Emit(@"保留: C:\synthetic_gate\replay\th9_01.rpy InvalidDataException: broken");
+            Settle();
+            Write(stdout, "watch-held-noop", watchRunning && Ids() == idsAutoImported);
+            monitor.Emit(@"登録: C:\synthetic_gate\replay\th9_01.rpy [decoded]");
+            Settle();
+            Write(stdout, "registered-line-from-monitor-noop", Ids() == idsAutoImported);
+            watch.Emit(@"登録: C:\synthetic_gate\replay\th9_01.rpy [decoded]");
+            Settle();
+            Write(stdout, "watch-registered-reloads", Ids() == idsPlayed);
+            bar.ToggleMonitorCommand.Execute(null);
+            Settle();
+
+            ReloadViaScan(dbBefore);
+            detail.Show(ReplayDetailRequest.FromSession(2));
+            shell.IsDetailOpen = true;
+            detail.ShowPageCommand.Execute(DetailPage.Files);
+            var headingBefore = detail.Heading;
+            var pageHistoryBefore = (detail.CanGoBackInDetail, detail.CanGoForwardInDetail);
+            WriteText(stdout, "detail-heading-before", headingBefore);
+            WriteText(stdout, "detail-state-before",
+                      "header=" + detail.HasHeader + " page=" + detail.Page + " back=" + detail.CanGoBackInDetail
+                      + " status=" + (detail.StatusText ?? "(null)"));
+            Write(stdout, "detail-shown",
+                  detail.HasHeader && detail.Page == DetailPage.Files && detail.CanGoBackInDetail
+                  && detail.StatusText is { Length: > 0 } && !detail.StatusText.StartsWith("読み直しに失敗", StringComparison.Ordinal));
+            ReloadViaScan(dbGone, detailOpen: true);
+            var headingAfter = detail.Heading;
+            WriteText(stdout, "detail-heading-after", headingAfter);
+            Write(stdout, "detail-reloaded", detail.HasHeader && headingAfter != headingBefore);
+            Write(stdout, "detail-position-kept",
+                  detail.Page == DetailPage.Files && (detail.CanGoBackInDetail, detail.CanGoForwardInDetail) == pageHistoryBefore
+                  && detail.Request.SessionId == 2);
+            ReloadViaScan(dbBefore, detailOpen: false);
+            Write(stdout, "closed-detail-not-reloaded", detail.Heading == headingAfter);
+            Swap(bad);
+            StartScanRun();
+            shell.IsDetailOpen = true;
+            FinishScanRun(0);
+            Write(stdout, "detail-unreadable-keeps-and-says-why",
+                  detail.Heading == headingAfter && detail.HasHeader
+                  && detail.StatusText is { } ds && ds.StartsWith("読み直しに失敗", StringComparison.Ordinal));
+            shell.IsDetailOpen = false;
+
+            var work = Path.Combine(dir, "work.sqlite3");
+            if (HistoryMaintenance.PointsAtRealData(work, noLayer0))
+            {
+                Console.Error.WriteLine("作業用の写しが本物の記録の場所を指しています: " + work);
+                return 3;
+            }
+            File.Copy(dbBefore, work, true);
+            ReloadViaScan(work);
+            history.Kind = HistoryKind.All;
+            history.ModifierHeld = true;
+            var sessionsBefore = history.Rows.Count;
+            var countAtWork = Count();
+            WriteText(stdout, "history-sessions-before", sessionsBefore.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            WriteText(stdout, "stats-count-at-work", countAtWork);
+
+            TrackerDb.Layer0DbPath = null;
+            history.Selection.Clear();
+            history.Selection.Select(0);
+            var replayReadBefore = replay.ReloadReading;
+            var statsReadBefore = stats.ReloadReading;
+            history.RequestDeleteCommand.Execute(null);
+            history.ConfirmDeleteCommand.Execute(null);
+            Settle();
+            Write(stdout, "history-failed-delete-noop",
+                  history.IsNoticeOpen && ReferenceEquals(replay.ReloadReading, replayReadBefore)
+                  && ReferenceEquals(stats.ReloadReading, statsReadBefore) && Count() == countAtWork);
+            history.CloseNoticeCommand.Execute(null);
+            TrackerDb.Layer0DbPath = noLayer0;
+
+            history.RetentionSource = () => (2, 2);
+            replayReadBefore = replay.ReloadReading;
+            history.RequestPruneCommand.Execute(null);
+            bool pruneAsked = history.IsPruneConfirmOpen;
+            history.ConfirmPruneCommand.Execute(null);
+            var prunedCount = history.LastDeleted.Count;
+            Settle();
+            WriteText(stdout, "history-pruned-count", prunedCount.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            WriteText(stdout, "stats-count-after-prune", Count());
+            Write(stdout, "history-prune-reloads",
+                  pruneAsked && prunedCount > 0 && !ReferenceEquals(replay.ReloadReading, replayReadBefore)
+                  && Count() != countAtWork);
+
+            var countAfterPrune = Count();
+            replayReadBefore = replay.ReloadReading;
+            history.Selection.Clear();
+            history.Selection.Select(0);
+            history.RequestDeleteCommand.Execute(null);
+            history.ConfirmDeleteCommand.Execute(null);
+            var deletedCount = history.LastDeleted.Count;
+            Settle();
+            WriteText(stdout, "history-deleted-count", deletedCount.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            WriteText(stdout, "stats-count-after-delete", Count());
+            Write(stdout, "history-delete-reloads",
+                  deletedCount > 0 && !ReferenceEquals(replay.ReloadReading, replayReadBefore)
+                  && Count() != countAfterPrune);
+            Write(stdout, "end", true);
+            stdout.Flush();
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.GetType().Name + ": " + ex.Message);
+            return 1;
+        }
+        finally
+        {
+            try { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    private static bool GoBackAndPathIsEmpty(StatsTabViewModel stats)
+    {
+        stats.GoBackCommand.Execute(null);
+        return stats.CurrentPath.Count == 0;
+    }
+
     private static bool ThrowsDuplicate(Action action)
     {
         try { action(); return false; }
@@ -1284,6 +1678,8 @@ internal static class DriveControlDump
 
         public int ExitCodeOnStop { get; set; } = 1;
 
+        public bool NotifyExitOffThread { get; set; }
+
         public bool Stop()
         {
             WasStopped = true;
@@ -1304,7 +1700,8 @@ internal static class DriveControlDump
             if (!IsRunning) return;
             ExitCode = code;
             IsRunning = false;
-            Exited?.Invoke();
+            if (NotifyExitOffThread) Task.Run(() => Exited?.Invoke()).Wait();
+            else Exited?.Invoke();
         }
 
         public void ExitSilently(int code)

@@ -67,6 +67,9 @@ internal sealed partial class ShellViewModel : ObservableObject, INavigationHost
 
         var shell = new ShellViewModel(navigation, tabs, detail, driveControl, drive, streamPanel);
         navigation.Attach(shell);
+        drive.DbUpdated += shell.ReloadForDbUpdate;
+        foreach (var history in tabs.OfType<HistoryTabViewModel>())
+            history.DbEdited += () => shell.ReloadForDbUpdate(DbUpdateCause.HistoryEdited);
         drive.Settings.Adopted += () =>
         {
             if (!OperatingSystem.IsWindows()) return;
@@ -82,6 +85,17 @@ internal sealed partial class ShellViewModel : ObservableObject, INavigationHost
     public string WindowTitle => "幻想閻魔帳";
 
     public DriveControlViewModel Drive { get; }
+
+
+    [ObservableProperty]
+    public partial bool IsUpdateNoticeVisible { get; set; }
+
+    public string UpdateNoticeText => Data.UpdateNotice.Message;
+
+    [RelayCommand]
+    private void CloseUpdateNotice() => IsUpdateNoticeVisible = false;
+
+    internal void PreviewUpdateNoticeForShot(bool visible) => IsUpdateNoticeVisible = visible;
 
     public StreamPanelViewModel StreamPanel { get; }
 
@@ -114,6 +128,13 @@ internal sealed partial class ShellViewModel : ObservableObject, INavigationHost
         var outcome = ConfigStore.Save(AppSettingsSource.ConfigPath, next);
         if (outcome.Written) AppSettingsSource.Adopt(next);
         else LogSource.Error("配信パネル", "設定を保存できませんでした: " + (outcome.Reason ?? "理由不明"));
+    }
+
+    internal void ReloadForDbUpdate(DbUpdateCause cause)
+    {
+        foreach (var tab in Tabs)
+            if (tab is IReloadsOnDbUpdate reloadable) reloadable.ReloadOnDbUpdate(cause);
+        if (IsDetailOpen) Detail.ReloadOnDbUpdate(cause);
     }
 
     public void Dispose() => _driveControl.Dispose();

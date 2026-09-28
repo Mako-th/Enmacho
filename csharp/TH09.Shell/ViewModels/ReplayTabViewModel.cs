@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TH09.Shell.Data;
@@ -25,7 +26,7 @@ internal sealed record ReplayHeader(ReplayColumn Column, bool IsActive, string A
     public double RightSeat => Data.SortMark.RightSeat(RightAligned);
 }
 
-internal sealed partial class ReplayTabViewModel : TabViewModelBase
+internal sealed partial class ReplayTabViewModel : TabViewModelBase, IReloadsOnDbUpdate
 {
     private readonly List<ReplayListRow> _all = [];
 
@@ -375,7 +376,54 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase
         ReloadKeepingFilters();
     }
 
-    private void ReloadKeepingFilters()
+    private void ReloadKeepingFilters() => RebuildKeepingFilters(Reload, inPlace: false);
+
+    public void ReloadOnDbUpdate(DbUpdateCause cause)
+    {
+        if (_reloadBusy || !TrackerDb.MainDbExists) return;
+        _reloadBusy = true;
+        ReloadReading = Task.Run(() =>
+        {
+            List<ReplayListRow>? rows = null;
+            Exception? error = null;
+            try
+            {
+                using var db = TrackerDb.OpenMainDb();
+                rows = ReplayListQuery.LoadAll(db);
+            }
+            catch (Exception ex) { error = ex; }
+            Dispatcher.UIThread.Post(() => ApplyReload(cause, rows, error));
+        });
+    }
+
+    private bool _reloadBusy;
+
+    internal Task? ReloadReading { get; private set; }
+
+    private void ApplyReload(DbUpdateCause cause, List<ReplayListRow>? rows, Exception? error)
+    {
+        _reloadBusy = false;
+        if (error is not null || rows is null)
+        {
+            var why = error is null ? "行が返りませんでした" : LogSource.Describe(error);
+            LogSource.Error(ReplayOwnLabels.Category, "[DB 更新後の読み直し] " + why);
+            StatusText = "読み直しに失敗しました（表示は前のままです）: " + why;
+            return;
+        }
+        RebuildKeepingFilters(() =>
+        {
+            _all.Clear();
+            _all.AddRange(rows);
+            StatusText = null;
+            BuildOptions();
+        }, inPlace: true);
+        LogSource.Info(ReplayOwnLabels.Category, DbUpdateCauses.Label(cause) + "を受けて "
+                       + rows.Count.ToString("N0", CultureInfo.InvariantCulture) + " 件を読み直した");
+    }
+
+    private bool _syncRowsInPlace;
+
+    private void RebuildKeepingFilters(Action rebuild, bool inPlace)
     {
         var ch = SelectedCharacter?.Value;
         var p1 = SelectedP1Character?.Value;
@@ -383,7 +431,7 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase
         var mode = SelectedMatchMode?.Value;
         var name = SelectedPlayerName?.Value;
 
-        Reload();
+        rebuild();
 
         _applying = true;
         SelectedCharacter = CharacterOptions.FirstOrDefault(o => o.Value == ch) ?? CharacterOptions[0];
@@ -394,7 +442,34 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase
         _applying = false;
 
         ContextRow = null;
-        Apply();
+        _syncRowsInPlace = inPlace;
+        try { Apply(); }
+        finally { _syncRowsInPlace = false; }
+    }
+
+    private void SyncRows(List<ReplayListRow> desired)
+    {
+        var keep = new HashSet<long>(desired.Select(r => r.ReplayId));
+        for (var i = Rows.Count - 1; i >= 0; i--)
+            if (!keep.Contains(Rows[i].ReplayId)) Rows.RemoveAt(i);
+
+        for (var i = 0; i < desired.Count; i++)
+        {
+            var want = desired[i];
+            if (i < Rows.Count && Rows[i].ReplayId == want.ReplayId)
+            {
+                Rows[i] = want;
+                continue;
+            }
+            for (var j = i + 1; j < Rows.Count; j++)
+            {
+                if (Rows[j].ReplayId != want.ReplayId) continue;
+                Rows.RemoveAt(j);
+                break;
+            }
+            Rows.Insert(i, want);
+        }
+        while (Rows.Count > desired.Count) Rows.RemoveAt(Rows.Count - 1);
     }
 
     private bool SectionOf(ReplayListRow row)
@@ -418,8 +493,15 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase
         ReplayListQuery.Sort(rows, SortKey, SortDescending);
 
         _applying = true;
-        Rows.Clear();
-        foreach (var r in rows) Rows.Add(r);
+        if (_syncRowsInPlace)
+        {
+            SyncRows(rows);
+        }
+        else
+        {
+            Rows.Clear();
+            foreach (var r in rows) Rows.Add(r);
+        }
         _applying = false;
 
         BuildHeaders(section);

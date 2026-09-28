@@ -19,6 +19,8 @@ internal static class ScanBackupDump
 
     private const string ModeRunForce = "run-force";
 
+    private const string ModeLayout = "layout";
+
     public static int Run(TextWriter w, string[] args)
     {
         if (args.Length != 3 && args.Length != 4)
@@ -36,12 +38,21 @@ internal static class ScanBackupDump
             Console.Error.WriteLine("日時が読めません（" + ScanBackup.StampFormat + "）: " + args[1]);
             return 2;
         }
+        if (args[2] == ModeLayout)
+        {
+            if (args.Length != 4)
+            {
+                Console.Error.WriteLine(ModeLayout + " には一覧ファイル（4 本目）が要ります。");
+                return 2;
+            }
+            return RunLayout(w, root, File.ReadAllLines(args[3]));
+        }
         if (args[2] != ModePlan && args[2] != ModeRun && args[2] != ModeRunYes
             && args[2] != ModeRunForce)
         {
             Console.Error.WriteLine("知らないモードです（" + ModePlan + " / " + ModeRun
-                                    + " / " + ModeRunYes + " / " + ModeRunForce + "）: "
-                                    + args[2]);
+                                    + " / " + ModeRunYes + " / " + ModeRunForce + " / "
+                                    + ModeLayout + "）: " + args[2]);
             return 2;
         }
 
@@ -146,6 +157,27 @@ internal static class ScanBackupDump
                 Row(w, "layer0dir", Rel(root, f));
         }
         Row(w, "end", args[2]);
+        return 0;
+    }
+
+    private static int RunLayout(TextWriter w, string root, string[] lines)
+    {
+        var files = lines.Select(x => x.Trim()).Where(x => x.Length > 0).ToList();
+        var destination = IOPath.Combine(root, "replay");
+        var source = new BackupSource("リプレイ", ScanBackup.CommonBase(files), destination, files, 0L);
+        Row(w, "layout", "base", source.Base);
+        foreach (var f in files)
+        {
+            try
+            {
+                Row(w, "layout", "copy", f, Rel(root, ScanBackup.CopyPathOf(source, f)));
+            }
+            catch (InvalidOperationException exc)
+            {
+                Row(w, "layout", "raised", f, exc.Message);
+            }
+        }
+        Row(w, "end", ModeLayout);
         return 0;
     }
 

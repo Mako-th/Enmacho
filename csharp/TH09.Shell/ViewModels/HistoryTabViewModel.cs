@@ -310,9 +310,11 @@ internal sealed partial class HistoryTabViewModel : TabViewModelBase
         IsDeleteConfirmOpen = false;
         var ids = SelectedIds();
         if (ids.Count == 0) return;
+        var deleted = false;
         try
         {
             Delete(ids);
+            deleted = true;
             LogSource.Info(Category, "[GUI] Session削除: "
                 + ids.Count.ToString(CultureInfo.InvariantCulture) + " 件");
         }
@@ -322,7 +324,10 @@ internal sealed partial class HistoryTabViewModel : TabViewModelBase
             ShowNotice(DeleteFailedTitle, ex.Message);
         }
         Reload();
+        if (deleted) DbEdited?.Invoke();
     }
+
+    internal event Action? DbEdited;
 
     [RelayCommand]
     private void RequestPrune()
@@ -368,9 +373,11 @@ internal sealed partial class HistoryTabViewModel : TabViewModelBase
         var ids = _prunePlan;
         _prunePlan = [];
         if (ids.Count == 0) return;
+        var deleted = false;
         try
         {
             Delete(ids);
+            deleted = true;
             LogSource.Info(Category, "[GUI] 履歴整理: "
                 + ids.Count.ToString(CultureInfo.InvariantCulture) + " 件削除");
         }
@@ -380,6 +387,7 @@ internal sealed partial class HistoryTabViewModel : TabViewModelBase
             ShowNotice(PruneTitle, ex.Message);
         }
         Reload();
+        if (deleted) DbEdited?.Invoke();
     }
 
     [RelayCommand]
