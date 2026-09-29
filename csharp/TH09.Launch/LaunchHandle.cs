@@ -8,6 +8,10 @@ public sealed class LaunchHandle : IDisposable
     private readonly TimeSpan stopTimeout;
     private readonly Action<LaunchHandle> release;
     private int disposed;
+    private int openStreams = 2;
+    private readonly ManualResetEventSlim outputDrained = new(false);
+    private int deliveredLines;
+    private volatile bool exitDelivered;
 
     internal LaunchHandle(Process process, TimeSpan stopTimeout, Action<LaunchHandle> release)
     {
@@ -27,7 +31,8 @@ public sealed class LaunchHandle : IDisposable
     {
         get
         {
-            try { return !process.HasExited; }
+            if (exitDelivered) return false;
+            try { return !process.HasExited || !outputDrained.IsSet; }
             catch (InvalidOperationException) { return false; }
         }
     }
@@ -69,6 +74,8 @@ public sealed class LaunchHandle : IDisposable
 
     private static readonly TimeSpan KillConfirmTimeout = TimeSpan.FromSeconds(1);
 
+    private static readonly TimeSpan OutputDrainTimeout = TimeSpan.FromSeconds(2);
+
     public void Dispose()
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0) return;
@@ -87,11 +94,24 @@ public sealed class LaunchHandle : IDisposable
     private void ReceiveLine(object sender, DataReceivedEventArgs args)
     {
         if (args.Data is not null)
+        {
             OutputLine?.Invoke(this, new LaunchOutputEventArgs(args.Data));
+            Interlocked.Increment(ref deliveredLines);
+        }
+        else if (Interlocked.Decrement(ref openStreams) == 0)
+            outputDrained.Set();
     }
 
     private void ProcessExited(object? sender, EventArgs args)
     {
+        int seen = Volatile.Read(ref deliveredLines);
+        while (!outputDrained.Wait(OutputDrainTimeout))
+        {
+            int now = Volatile.Read(ref deliveredLines);
+            if (now == seen) break;
+            seen = now;
+        }
+        exitDelivered = true;
         release(this);
         Exited?.Invoke(this, EventArgs.Empty);
     }
