@@ -95,6 +95,14 @@ public static class AppSettingsDump
         List(w, Paths.OwnPlayerNamesKey, s.OwnPlayerNames);
         List(w, ConfigStore.ScanDirsKey, s.ScanDirs);
         Row(w, "set", ConfigStore.ScanNoRecurseKey, Flag01(s.ScanNoRecurse));
+        List(w, ConfigStore.OwnReplayDirsKey, s.OwnReplayDirs);
+        Row(w, "set", Paths.OwnNameIgnoreCaseKey, Flag01(s.OwnNameIgnoreCase));
+        Row(w, "set", ExcludedReplays.Key + ".count", Num(s.ExcludedReplays.Count));
+        for (var i = 0; i < s.ExcludedReplays.Count; i++)
+        {
+            var e = s.ExcludedReplays[i];
+            Row(w, "excluded", Num(i), e.Sha256, e.Path, e.ExcludedAt);
+        }
         Row(w, "fact", "notes", Num(s.Notes.Count));
         foreach (var note in s.Notes) Row(w, "note", note.Key, note.Kind, note.Text);
     }
@@ -195,6 +203,11 @@ public static class AppSettingsDump
                 return true;
             case ConfigStore.ScanNoRecurseKey when Flag(value) is bool v:
                 s = s with { ScanNoRecurse = v }; return true;
+            case ConfigStore.OwnReplayDirsKey:
+                s = s with { OwnReplayDirs = Words(value) };
+                return true;
+            case Paths.OwnNameIgnoreCaseKey when Flag(value) is bool v:
+                s = s with { OwnNameIgnoreCase = v }; return true;
             case ConfigStore.StatsHiddenItemsKey:
                 s = s with { StatsHiddenItems = Words(value) };
                 return true;

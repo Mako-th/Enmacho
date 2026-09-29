@@ -1637,7 +1637,7 @@ internal static class DriveControlDump
         public void Dispose() { }
     }
 
-    private sealed class FakeLauncher : IDriveProcessLauncher
+    internal sealed class FakeLauncher : IDriveProcessLauncher
     {
         private readonly Dictionary<LaunchKind, List<FakeHandle>> handles = [];
         private readonly Dictionary<LaunchKind, int> endBeforeSubscribe = [];
@@ -1665,7 +1665,7 @@ internal static class DriveControlDump
         public void FailNextStart(LaunchKind kind, Exception error) => failNextStart[kind] = error;
     }
 
-    private sealed class FakeHandle : IDriveProcessHandle
+    internal sealed class FakeHandle : IDriveProcessHandle
     {
         public event Action<string>? OutputLine;
         public event Action? Exited;

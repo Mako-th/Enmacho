@@ -61,8 +61,7 @@ internal static class ReplayOwnDump
             vm.SetOwnP2Command.Execute(null);
             Write(stdout, "apply-p2-db", ReadOverride(replayId) == ReplayOwnership.OwnP2);
             Write(stdout, "apply-p2-note",
-                  vm.OwnNote is string n1 && n1.Contains(ReplayOwnLabels.OwnP2, StringComparison.Ordinal)
-                  && n1.Contains(ReplayOwnLabels.EffectNote, StringComparison.Ordinal));
+                  vm.OwnNote is string n1 && n1.Contains(ReplayOwnLabels.OwnP2, StringComparison.Ordinal));
             var after = vm.Rows.FirstOrDefault(r => r.ReplayId == replayId);
             Write(stdout, "apply-p2-row",
                   after is not null && after.Own == OwnSide.P2
@@ -102,7 +101,7 @@ internal static class ReplayOwnDump
                   miss.Missing.Count == 1 && miss.Changed == 0 && miss.Unchanged == 0);
 
             var rejected = false;
-            try { ReplayOwnership.SetOverride(db, [replayId], 3); }
+            try { ReplayOwnership.SetOverride(db, [replayId], ReplayOwnership.OwnUnknownSide + 1); }
             catch (ArgumentOutOfRangeException) { rejected = true; }
             Write(stdout, "reject-unknown", rejected && ReadOverride(replayId) is null);
 
@@ -141,7 +140,7 @@ internal static class ReplayOwnDump
     private static void Write(TextWriter stdout, string name, bool ok)
         => stdout.Write(name + "\t" + (ok ? "ok" : "NG") + "\n");
 
-    private sealed class CountingNavigation : INavigationService
+    internal sealed class CountingNavigation : INavigationService
     {
         public int Opened { get; private set; }
 

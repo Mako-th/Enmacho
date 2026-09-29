@@ -31,7 +31,10 @@ internal static class ReplayDetailQuery
                r.is_own,
                r.owner_side,
                --: ★4 分類の原本（面 9 / 19 の ai）【2026-09-13】。★一番後ろへ足すこと
-               r.decoded_json
+               r.decoded_json,
+               --: ★人が覆した所有【2026-09-29】。★一覧と同じ読み口（ReplayOwn.Of）へ通す
+               --:   （それまで詳細には覆しが届いていなかった）。★一番後ろへ足すこと
+               r.own_override
           FROM replays r
          WHERE r.replay_id = $0
         """;
@@ -150,7 +153,7 @@ internal static class ReplayDetailQuery
                                            && RecordKinds.IsScanLink(x.Method));
 
         int? mode = null, difficulty = null, p1Char = null, p2Char = null;
-        int? isOwn = null, ownerSide = null, p1Control = null, p2Control = null;
+        int? ownerSide = null, ownOverride = null, p1Control = null, p2Control = null;
         string? playerName = null, replayDate = null, mtime = null, p1NameRaw = null, p2NameRaw = null;
         string? decodedJson = null;
         var haveReplay = false;
@@ -170,9 +173,9 @@ internal static class ReplayDetailQuery
                 p2Char = TrackerDb.Int32OrNull(r, 7);
                 p1NameRaw = TrackerDb.StringOrNull(r, 8);
                 p2NameRaw = TrackerDb.StringOrNull(r, 9);
-                isOwn = TrackerDb.Int32OrNull(r, 10);
                 ownerSide = TrackerDb.Int32OrNull(r, 11);
                 decodedJson = TrackerDb.StringOrNull(r, 12);
+                ownOverride = TrackerDb.Int32OrNull(r, 13);
             });
         }
 
@@ -229,7 +232,9 @@ internal static class ReplayDetailQuery
             };
 
         var section = mode == ModeMatch ? ReplaySection.Match : ReplaySection.StoryExtra;
-        var own = ReplayListQuery.ResolveOwnSide(isOwn, ownerSide);
+        var own = ReplayListQuery.ResolveOwnSide(ownerSide, ownOverride);
+        var matchMode = ReplayListQuery.ResolveMatchMode(decodedJson, p1Control, p2Control);
+        var humanSide = section == ReplaySection.Match ? ReplayListQuery.HumanSideOf(matchMode) : null;
         var (playedAt, hasTime) = ReplayListQuery.ResolvePlayedAt(replayDate, mtime);
 
         var rows = new List<ReplayDetailRow>();
@@ -299,9 +304,11 @@ internal static class ReplayDetailQuery
             PlayedAtHasTime = hasTime,
             P1Character = p1Char,
             P2Character = p2Char,
-            P1Name = ReplayListQuery.ResolveSideName(section, 1, p1NameRaw, playerName, own, p1Control),
-            P2Name = ReplayListQuery.ResolveSideName(section, 2, p2NameRaw, playerName, own, p2Control),
-            MatchMode = ReplayListQuery.ResolveMatchMode(decodedJson, p1Control, p2Control),
+            P1Name = ReplayListQuery.ResolveSideName(section, 1, p1NameRaw, playerName, own, p1Control,
+                                                     humanSide),
+            P2Name = ReplayListQuery.ResolveSideName(section, 2, p2NameRaw, playerName, own, p2Control,
+                                                     humanSide),
+            MatchMode = matchMode,
             RoundCount = rows.Count,
             TotalFrames = anyFrames ? totalFrames : null,
         };

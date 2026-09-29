@@ -132,6 +132,13 @@ public static class Program
               ★ゲームには一切触らない。
               終了コード: 0 = 流れた / 1 = 引数か台本が変 / 3 = 本物を指していた。
 
+          th09_record --replay-maintenance --db <tracker.sqlite3> --script <台本.tsv>
+              ★★リプレイの所有（ReplayOwn / ReplayOwnership.MarkOwn）と、記録から外す
+              （ReplayMaintenance.Describe / Delete）を台本どおりに動かす。ファイルは消さない。
+              ★★本物の本体 DB / Layer 0 のフォルダは 1 行も流す前に断る（合成の DB を渡すこと）。
+              ★ゲームには一切触らない。
+              終了コード: 0 = 流れた / 1 = 引数か台本が変 / 3 = 本物を指していた。
+
           th09_record --replay-stages --db <tracker.sqlite3> [--script <台本.tsv>]
           th09_record --replay-stages --json <台本.tsv>
               ★★面の数え方（ReplayStages）と突き合わせ（VerifySession）を動かす口。
@@ -259,6 +266,7 @@ public static class Program
             if (opt.ContainsKey("history-plan")) return RunHistoryPlan(opt, prune: false);
             if (opt.ContainsKey("history-prune")) return RunHistoryPlan(opt, prune: true);
             if (opt.ContainsKey("replay-register")) return RunReplayRegister(opt);
+            if (opt.ContainsKey("replay-maintenance")) return RunReplayMaintenance(opt);
             if (opt.ContainsKey("dump-replay-watch"))
             {
                 foreach (var line in Paths.ReplayWatchDumpLines(args)) Console.WriteLine(line);
@@ -931,6 +939,17 @@ public static class Program
         using var w = new StreamWriter(Console.OpenStandardOutput(),
                                        new UTF8Encoding(false), 1 << 16);
         int rc = ReplayRegistrarDump.Run(w, dbPath, scriptPath);
+        w.Flush();
+        return rc;
+    }
+
+    private static int RunReplayMaintenance(Dictionary<string, string?> opt)
+    {
+        if (!Require(opt, "db", out var dbPath)) return 1;
+        if (!Require(opt, "script", out var scriptPath)) return 1;
+        using var w = new StreamWriter(Console.OpenStandardOutput(),
+                                       new UTF8Encoding(false), 1 << 16);
+        int rc = ReplayMaintenanceDump.Run(w, dbPath, scriptPath);
         w.Flush();
         return rc;
     }

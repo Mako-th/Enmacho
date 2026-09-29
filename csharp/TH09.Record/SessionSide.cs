@@ -47,12 +47,14 @@ public static class SessionSide
 
     public static (int? Side, bool Own, bool Provisional) Of(
         long? ownOverride, long? ownerSide, string? p1Name, string? p2Name, IReadOnlyList<string> names,
-        long? replayId, long? p1Control, long? p2Control, long? seat, string? execType)
+        long? replayId, long? p1Control, long? p2Control, long? seat, string? execType,
+        bool ignoreCase = true)
     {
-        var byName = SideByName(p1Name, p2Name, names);
-        long? side = ownOverride ?? byName ?? ownerSide;
+        var byName = SideByName(p1Name, p2Name, names, ignoreCase);
+        var (replayOwn, replaySide) = ReplayOwn.Of(ownOverride, ownerSide);
+        long? side = ownOverride is 1 or 2 ? ownOverride : byName ?? replaySide;
         var hasReplay = replayId is not null;
-        var own = execType != RecordLabels.ExecReplay || (hasReplay && side is 1 or 2);
+        var own = execType != RecordLabels.ExecReplay || (hasReplay && replayOwn);
         if (side is 1 or 2) return ((int)side.Value, own, false);
 
         int? human = null;
@@ -68,14 +70,18 @@ public static class SessionSide
         return (null, own, false);
     }
 
-    public static int? SideByName(string? p1Name, string? p2Name, IReadOnlyList<string> names)
+    public static int? SideByName(string? p1Name, string? p2Name, IReadOnlyList<string> names,
+                                  bool ignoreCase = true)
     {
         ArgumentNullException.ThrowIfNull(names);
         if (names.Count == 0 || !names.Any(n => !string.IsNullOrWhiteSpace(n))) return null;
-        if (NameHit(p1Name, names)) return 1;
-        if (NameHit(p2Name, names)) return 2;
+        if (NameHit(p1Name, names, ignoreCase)) return 1;
+        if (NameHit(p2Name, names, ignoreCase)) return 2;
         return null;
     }
+
+    public static bool IgnoreCaseFromConfig(Paths? paths = null)
+        => (paths ?? Paths.Default).ReadOwnNameIgnoreCase();
 
     public static OwnNames OwnReplayNames(SqliteConnection c)
     {
@@ -85,17 +91,16 @@ public static class SessionSide
         try
         {
             using var cmd = c.CreateCommand();
-            cmd.CommandText = "SELECT p1_name,p2_name,is_own,owner_side,own_override FROM replays";
+            cmd.CommandText = "SELECT p1_name,p2_name,owner_side,own_override FROM replays";
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
                 var p1 = r.IsDBNull(0) ? null : r.GetString(0);
                 var p2 = r.IsDBNull(1) ? null : r.GetString(1);
-                var isOwn = r.IsDBNull(2) ? 0 : r.GetInt64(2);
-                long? ownerSide = r.IsDBNull(3) ? null : r.GetInt64(3);
-                long? ov = r.IsDBNull(4) ? null : r.GetInt64(4);
-                var side = ov ?? ownerSide;
-                if (isOwn == 0 || side is not (1 or 2)) continue;
+                long? ownerSide = r.IsDBNull(2) ? null : r.GetInt64(2);
+                long? ov = r.IsDBNull(3) ? null : r.GetInt64(3);
+                var (own, side) = ReplayOwn.Of(ov, ownerSide);
+                if (!own || side is null) continue;
                 Bump(mine, side == 1 ? p1 : p2);
                 Bump(theirs, side == 1 ? p2 : p1);
             }
@@ -132,15 +137,16 @@ public static class SessionSide
         return OwnReplayNames(db.Connection);
     }
 
-    private static bool NameHit(string? candidate, IReadOnlyList<string> names)
+    private static bool NameHit(string? candidate, IReadOnlyList<string> names, bool ignoreCase)
     {
         if (candidate is null) return false;
         var v = candidate.Trim();
         if (v.Length == 0) return false;
-        v = v.ToLowerInvariant();
+        if (ignoreCase) v = v.ToLowerInvariant();
         foreach (var raw in names)
         {
-            var n = raw.Trim().ToLowerInvariant();
+            var n = raw.Trim();
+            if (ignoreCase) n = n.ToLowerInvariant();
             if (n.Length == 0) continue;
             if (v.Contains(n, StringComparison.Ordinal)) return true;
         }

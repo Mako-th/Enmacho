@@ -5,6 +5,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TH09.Shell.Data;
 using TH09.Shell.Navigation;
+using ExcludedReplayEntry = TH09.Record.ExcludedReplayEntry;
+using ReplayDeleteResult = TH09.Record.ReplayDeleteResult;
+using ReplayDescribeRow = TH09.Record.ReplayDescribeRow;
+using ReplayDescription = TH09.Record.ReplayDescription;
+using ReplayMaintenance = TH09.Record.ReplayMaintenance;
+using ReplayOwnershipResult = TH09.Record.ReplayOwnershipResult;
 
 namespace TH09.Shell.ViewModels;
 
@@ -37,8 +43,13 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase, IReloadsOnD
     private int? _storyDifficulty;
     private int? _matchDifficulty;
 
-    public ReplayTabViewModel(INavigationService navigation) : base(navigation)
+    private readonly Func<IReadOnlyList<ExcludedReplayEntry>, ExcludedSaveResult> _saveExcluded;
+
+    public ReplayTabViewModel(INavigationService navigation,
+                              Func<IReadOnlyList<ExcludedReplayEntry>, ExcludedSaveResult>? saveExcluded = null)
+        : base(navigation)
     {
+        _saveExcluded = saveExcluded ?? SaveExcludedForReal;
         Reload();
     }
 
@@ -82,28 +93,105 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase, IReloadsOnD
             _contextRow = value;
             RebuildRevealOptions(value);
             OnPropertyChanged(nameof(HasContextRow));
-            OnPropertyChanged(nameof(OwnIsAuto));
-            OnPropertyChanged(nameof(OwnIsForeign));
-            OnPropertyChanged(nameof(OwnIsP1));
-            OnPropertyChanged(nameof(OwnIsP2));
-            OnPropertyChanged(nameof(OwnAutoText));
-            OnPropertyChanged(nameof(OwnForeignText));
-            OnPropertyChanged(nameof(OwnP1Text));
-            OnPropertyChanged(nameof(OwnP2Text));
+            NotifyTargetChanged();
         }
     }
 
     public bool HasContextRow => _contextRow is not null;
 
-    public bool OwnIsAuto => _contextRow?.OwnOverride is null;
 
-    public bool OwnIsForeign => _contextRow?.OwnOverride == TH09.Record.ReplayOwnership.Foreign;
+    private readonly HashSet<long> _checked = [];
 
-    public bool OwnIsP1 => _contextRow?.OwnOverride == TH09.Record.ReplayOwnership.OwnP1;
+    public bool CheckHeld { get; set; }
 
-    public bool OwnIsP2 => _contextRow?.OwnOverride == TH09.Record.ReplayOwnership.OwnP2;
+    public int CheckedCount => _checked.Count;
+
+    public string CheckedCountText => ReplayOwnLabels.CheckedCount(_checked.Count);
+
+    public bool HasChecked => _checked.Count > 0;
+
+    public bool AllShownChecked => Rows.Count > 0 && Rows.All(r => _checked.Contains(r.ReplayId));
+
+    [RelayCommand]
+    private void ToggleAllShown()
+    {
+        var all = AllShownChecked;
+        foreach (var r in Rows)
+        {
+            if (all) _checked.Remove(r.ReplayId); else _checked.Add(r.ReplayId);
+            r.SetCheckedFromSet(!all);
+        }
+        NotifyChecksChanged();
+    }
+
+    [RelayCommand]
+    private void ClearChecks()
+    {
+        _checked.Clear();
+        foreach (var r in Rows) r.SetCheckedFromSet(false);
+        NotifyChecksChanged();
+    }
+
+    private void OnRowToggled(ReplayListRow row, bool value)
+    {
+        if (value) _checked.Add(row.ReplayId); else _checked.Remove(row.ReplayId);
+        NotifyChecksChanged();
+    }
+
+    private void NotifyChecksChanged()
+    {
+        OnPropertyChanged(nameof(CheckedCount));
+        OnPropertyChanged(nameof(CheckedCountText));
+        OnPropertyChanged(nameof(HasChecked));
+        OnPropertyChanged(nameof(AllShownChecked));
+        NotifyTargetChanged();
+    }
+
+    public IReadOnlyList<ReplayListRow> TargetRows()
+    {
+        if (_checked.Count > 0) return [.. _all.Where(r => _checked.Contains(r.ReplayId))];
+        return _contextRow is null ? [] : [_contextRow];
+    }
+
+    public int TargetCount => _checked.Count > 0 ? _checked.Count : (_contextRow is null ? 0 : 1);
+
+    public bool HasTarget => TargetCount > 0;
+
+    public string TargetLineText
+        => TargetCount == 0 ? ReplayOwnLabels.NoTarget
+                            : ReplayOwnLabels.TargetLine(TargetCount, _checked.Count > 0);
+
+    public string DeleteMenuText => ReplayOwnLabels.DeleteMenu(TargetCount);
+
+    private ReplayListRow? MarkRow => TargetCount == 1 ? TargetRows()[0] : null;
+
+    private void NotifyTargetChanged()
+    {
+        OnPropertyChanged(nameof(TargetCount));
+        OnPropertyChanged(nameof(HasTarget));
+        OnPropertyChanged(nameof(TargetLineText));
+        OnPropertyChanged(nameof(DeleteMenuText));
+        OnPropertyChanged(nameof(OwnIsAuto));
+        OnPropertyChanged(nameof(OwnIsForeign));
+        OnPropertyChanged(nameof(OwnIsP1));
+        OnPropertyChanged(nameof(OwnIsP2));
+        OnPropertyChanged(nameof(OwnAutoText));
+        OnPropertyChanged(nameof(OwnForeignText));
+        OnPropertyChanged(nameof(OwnP1Text));
+        OnPropertyChanged(nameof(OwnP2Text));
+    }
+
+    public bool OwnIsAuto => MarkRow is { OwnOverride: null };
+
+    public bool OwnIsForeign => MarkRow?.OwnOverride == TH09.Record.ReplayOwnership.Foreign;
+
+    public bool OwnIsP1 => MarkRow?.OwnOverride == TH09.Record.ReplayOwnership.OwnP1;
+
+    public bool OwnIsP2 => MarkRow?.OwnOverride == TH09.Record.ReplayOwnership.OwnP2;
 
     public string OwnAutoText => ReplayOwnLabels.Item(ReplayOwnLabels.Auto, OwnIsAuto);
+
+    public string MarkOwnText => ReplayOwnLabels.Item(ReplayOwnLabels.MarkOwn, false);
 
     public string OwnForeignText => ReplayOwnLabels.Item(ReplayOwnLabels.Foreign, OwnIsForeign);
 
@@ -238,8 +326,11 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase, IReloadsOnD
         {
             StatusText = "本体 DB を読めませんでした: " + ex.Message;
         }
+        var alive = new HashSet<long>(_all.Select(r => r.ReplayId));
+        _checked.RemoveWhere(id => !alive.Contains(id));
         BuildOptions();
         Apply();
+        NotifyChecksChanged();
     }
 
 
@@ -274,6 +365,7 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase, IReloadsOnD
         _applying = true;
         SelectedRow = null;
         _applying = false;
+        if (CheckHeld) return;
         if (ContextHeld) { ContextRow = row; return; }
         ContextRow = null;
         Navigation.OpenReplayDetail(ReplayDetailRequest.FromReplay(row.ReplayId, row.SessionId));
@@ -340,31 +432,188 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase, IReloadsOnD
     private void SetOwnP2()
         => ApplyOwnOverride(TH09.Record.ReplayOwnership.OwnP2, ReplayOwnLabels.OwnP2);
 
-    private void ApplyOwnOverride(int? value, string label)
+    [RelayCommand]
+    private void MarkOwn()
+        => RunOwnVerb(ReplayOwnLabels.MarkOwn,
+                      (main, ids, log) => TH09.Record.ReplayOwnership.MarkOwn(main, ids, log));
+
+
+    private PendingDelete? _pendingDelete;
+
+    private sealed record PendingDelete(IReadOnlyList<long> Ids, ReplayDescription Description);
+
+    [ObservableProperty]
+    public partial bool IsDeleteConfirmOpen { get; set; }
+
+    [ObservableProperty]
+    public partial string DeleteConfirmText { get; set; } = "";
+
+    [RelayCommand]
+    private void Delete()
     {
-        if (ContextRow is not ReplayListRow row) return;
+        var ids = TargetRows().Select(t => t.ReplayId).ToList();
+        if (ids.Count == 0) return;
+        if (TrackerDb.MainDbPath is not string main || !TrackerDb.MainDbExists)
+        {
+            OwnNote = ReplayOwnLabels.NoDbDelete;
+            return;
+        }
+        if (TrackerDb.Layer0DbPath is null)
+        {
+            OwnNote = ReplayOwnLabels.NoLayer0Delete;
+            LogSource.Warn(ReplayOwnLabels.Category, ReplayOwnLabels.Delete + ": " + ReplayOwnLabels.NoLayer0Delete);
+            return;
+        }
+        ReplayDescription d;
+        try
+        {
+            d = ReplayMaintenance.Describe(main, ids);
+        }
+        catch (Exception ex)
+        {
+            LogSource.Error(ReplayOwnLabels.Category, ReplayOwnLabels.Delete + ": " + LogSource.Describe(ex));
+            OwnNote = ReplayOwnLabels.Delete + "の見通しを作れませんでした: " + ex.Message;
+            return;
+        }
+        if (d.Rows.Count == 0)
+        {
+            OwnNote = ReplayOwnLabels.AllMissing(ids.Count);
+            LogSource.Warn(ReplayOwnLabels.Category, "[GUI] " + ReplayOwnLabels.Delete + ": " + OwnNote);
+            ReloadNowInPlace(DbUpdateCause.ReplayEdited);
+            return;
+        }
+        _pendingDelete = new PendingDelete(ids, d);
+        DeleteConfirmText = ReplayOwnLabels.DeleteConfirmText(d.Rows.Count, ReplayMaintenance.SessionsLine(d));
+        IsDeleteConfirmOpen = true;
+    }
+
+    [RelayCommand]
+    private void ConfirmDeleteAndExclude() => RunDelete(exclude: true);
+
+    [RelayCommand]
+    private void ConfirmDeleteOnly() => RunDelete(exclude: false);
+
+    [RelayCommand]
+    private void CancelDelete()
+    {
+        IsDeleteConfirmOpen = false;
+        _pendingDelete = null;
+    }
+
+    private void RunDelete(bool exclude)
+    {
+        IsDeleteConfirmOpen = false;
+        var pending = _pendingDelete;
+        _pendingDelete = null;
+        if (pending is null) return;
+        if (TrackerDb.MainDbPath is not string main || !TrackerDb.MainDbExists)
+        {
+            OwnNote = ReplayOwnLabels.NoDbDelete;
+            return;
+        }
+        var d = pending.Description;
+        var excludedAdded = 0;
+        var excludedAlready = 0;
+        if (exclude)
+        {
+            var stamp = DateTimeOffset.Now.ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture);
+            var entries = d.Rows.Select(r => new ExcludedReplayEntry(r.Sha256, CurrentPathOf(r), stamp)).ToList();
+            var save = _saveExcluded(entries);
+            if (!save.Saved)
+            {
+                OwnNote = ReplayOwnLabels.ExcludeSaveFailed(save.Reason);
+                LogSource.Error(ReplayOwnLabels.Category, "[GUI] " + ReplayOwnLabels.Delete + ": " + OwnNote);
+                return;
+            }
+            excludedAdded = save.Added;
+            excludedAlready = save.AlreadyThere;
+        }
+        ReplayDeleteResult r;
+        try
+        {
+            r = ReplayMaintenance.Delete(main, TrackerDb.Layer0DbPath, pending.Ids,
+                                         line => LogSource.Warn(ReplayOwnLabels.Category, line));
+        }
+        catch (Exception ex)
+        {
+            LogSource.Error(ReplayOwnLabels.Category, ReplayOwnLabels.Delete + ": " + LogSource.Describe(ex));
+            OwnNote = ReplayOwnLabels.DeleteFailed(ex.Message, exclude && (excludedAdded + excludedAlready) > 0);
+            ReloadNowInPlace(DbUpdateCause.ReplayEdited);
+            return;
+        }
+        _checked.ExceptWith(pending.Ids);
+        OwnNote = ReplayOwnLabels.Deleted(pending.Ids.Count, r.ReplayRows, r.Missing.Count,
+                                          r.ScanSessions.Deleted.Count, r.GuessedLinksDetached,
+                                          exclude ? excludedAdded : null, excludedAlready);
+        LogSource.Info(ReplayOwnLabels.Category, "[GUI] " + ReplayOwnLabels.Delete + ": " + OwnNote);
+        ReloadNowInPlace(DbUpdateCause.ReplayEdited);
+        DbEdited?.Invoke();
+    }
+
+    private static string CurrentPathOf(ReplayDescribeRow row)
+    {
+        foreach (var (path, isCurrent) in row.Paths) if (isCurrent) return path;
+        return row.Paths.Count > 0 ? row.Paths[0].Path : "";
+    }
+
+    private static ExcludedSaveResult SaveExcludedForReal(IReadOnlyList<ExcludedReplayEntry> entries)
+        => OperatingSystem.IsWindows()
+            ? ExcludedReplaysSave.Add(entries)
+            : new ExcludedSaveResult(false, 0, 0, "設定の保存は Windows でだけ動きます。");
+
+    internal void PreviewRowsForShot(IReadOnlyList<ReplayListRow> rows, int checkedCount)
+    {
+        _all.Clear();
+        _all.AddRange(rows);
+        StatusText = null;
+        _checked.Clear();
+        foreach (var r in rows.Take(checkedCount)) _checked.Add(r.ReplayId);
+        BuildOptions();
+        Apply();
+        NotifyChecksChanged();
+    }
+
+    internal void PreviewContextForShot(ReplayListRow? row)
+    {
+        ContextRow = row;
+    }
+
+    internal void PreviewDeleteConfirmForShot(bool open)
+    {
+        if (!open)
+        {
+            IsDeleteConfirmOpen = false;
+            return;
+        }
+        var n = Math.Max(1, TargetCount);
+        var rows = Enumerable.Range(0, n).Select(i => new ReplayDescribeRow(
+            i + 1, new string((char)('a' + i % 6), 64),
+            [(@"D:\TH09\replay\th9_" + (i + 1).ToString("00", CultureInfo.InvariantCulture) + ".rpy", true)],
+            ScanSessions: 1, GuessedLinks: i == 0 ? 1 : 0)).ToList();
+        DeleteConfirmText = ReplayOwnLabels.DeleteConfirmText(
+            n, ReplayMaintenance.SessionsLine(new ReplayDescription(rows, [])));
+        IsDeleteConfirmOpen = true;
+    }
+
+    private void ApplyOwnOverride(int? value, string label)
+        => RunOwnVerb(label, (main, ids, log) =>
+            TH09.Record.ReplayOwnership.SetOverride(main, ids, value, log));
+
+    private void RunOwnVerb(string label,
+                            Func<string, IReadOnlyList<long>, Action<string>, ReplayOwnershipResult> verb)
+    {
+        var targets = TargetRows();
+        if (targets.Count == 0) return;
+        var ids = targets.Select(t => t.ReplayId).ToList();
         if (TrackerDb.MainDbPath is not string main || !TrackerDb.MainDbExists)
         {
             OwnNote = ReplayOwnLabels.NoDb;
             return;
         }
+        ReplayOwnershipResult r;
         try
         {
-            var r = TH09.Record.ReplayOwnership.SetOverride(
-                main, [row.ReplayId], value,
-                line => LogSource.Warn(ReplayOwnLabels.Category, line));
-            if (r.Missing.Count > 0)
-            {
-                OwnNote = "replay_id " + row.ReplayId.ToString(CultureInfo.InvariantCulture)
-                          + " の行が本体 DB にありません（覆していません）。";
-                return;
-            }
-            OwnNote = ReplayOwnLabels.Applied(row.ReplayId, label, r.Changed > 0);
-            LogSource.Info(ReplayOwnLabels.Category,
-                           "[GUI] " + ReplayOwnLabels.Menu + ": replay_id "
-                           + row.ReplayId.ToString(CultureInfo.InvariantCulture)
-                           + " ★ " + label
-                           + "（変わった " + r.Changed.ToString(CultureInfo.InvariantCulture) + " 件）");
+            r = verb(main, ids, line => LogSource.Warn(ReplayOwnLabels.Category, line));
         }
         catch (Exception ex)
         {
@@ -373,13 +622,22 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase, IReloadsOnD
             OwnNote = ReplayOwnLabels.Menu + "に失敗しました: " + ex.Message;
             return;
         }
-        ReloadKeepingFilters();
+        OwnNote = ids.Count == 1 && r.Missing.Count == 0 && r.WithoutSide == 0
+            ? ReplayOwnLabels.Applied(ids[0], label, r.Changed > 0)
+            : ReplayOwnLabels.AppliedMany(ids.Count, label, r.Changed, r.Unchanged, r.Missing.Count, r.WithoutSide);
+        LogSource.Info(ReplayOwnLabels.Category,
+                       "[GUI] " + label + ": " + ReplayOwnLabels.OwnResultLine(
+                           ids.Count, r.Changed, r.Unchanged, r.Missing.Count, r.WithoutSide)
+                       + "（replay_id " + string.Join(", ", ids.Take(5).Select(
+                           i => i.ToString(CultureInfo.InvariantCulture)))
+                       + (ids.Count > 5 ? " ほか" : "") + "）");
+        ReloadNowInPlace(DbUpdateCause.ReplayEdited);
+        if (r.Changed > 0) DbEdited?.Invoke();
     }
-
-    private void ReloadKeepingFilters() => RebuildKeepingFilters(Reload, inPlace: false);
 
     public void ReloadOnDbUpdate(DbUpdateCause cause)
     {
+        if (cause == DbUpdateCause.ReplayEdited) return;
         if (_reloadBusy || !TrackerDb.MainDbExists) return;
         _reloadBusy = true;
         ReloadReading = Task.Run(() =>
@@ -398,6 +656,22 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase, IReloadsOnD
 
     private bool _reloadBusy;
 
+    internal event Action? DbEdited;
+
+    private void ReloadNowInPlace(DbUpdateCause cause)
+    {
+        if (!TrackerDb.MainDbExists) return;
+        List<ReplayListRow>? rows = null;
+        Exception? error = null;
+        try
+        {
+            using var db = TrackerDb.OpenMainDb();
+            rows = ReplayListQuery.LoadAll(db);
+        }
+        catch (Exception ex) { error = ex; }
+        ApplyReload(cause, rows, error);
+    }
+
     internal Task? ReloadReading { get; private set; }
 
     private void ApplyReload(DbUpdateCause cause, List<ReplayListRow>? rows, Exception? error)
@@ -415,8 +689,11 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase, IReloadsOnD
             _all.Clear();
             _all.AddRange(rows);
             StatusText = null;
+            var alive = new HashSet<long>(rows.Select(r => r.ReplayId));
+            _checked.RemoveWhere(id => !alive.Contains(id));
             BuildOptions();
         }, inPlace: true);
+        NotifyChecksChanged();
         LogSource.Info(ReplayOwnLabels.Category, DbUpdateCauses.Label(cause) + "を受けて "
                        + rows.Count.ToString("N0", CultureInfo.InvariantCulture) + " 件を読み直した");
     }
@@ -503,6 +780,13 @@ internal sealed partial class ReplayTabViewModel : TabViewModelBase, IReloadsOnD
             foreach (var r in rows) Rows.Add(r);
         }
         _applying = false;
+
+        foreach (var r in Rows)
+        {
+            r.Toggled = OnRowToggled;
+            r.SetCheckedFromSet(_checked.Contains(r.ReplayId));
+        }
+        OnPropertyChanged(nameof(AllShownChecked));
 
         BuildHeaders(section);
         OnPropertyChanged(nameof(CountText));

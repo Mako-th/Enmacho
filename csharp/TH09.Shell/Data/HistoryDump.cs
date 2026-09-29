@@ -11,6 +11,7 @@ internal static class HistoryDump
         "dt", "mode", "diff", "p1", "p2", "lives", "score", "state", "rep",
         "kind", "exec", "repId", "repCount",
         "recKind",
+        "dtRank",
     ];
 
     private const char Separator = '\t';
@@ -31,6 +32,11 @@ internal static class HistoryDump
             using var db = TrackerDb.OpenMainDb();
             var rows = HistoryQuery.LoadAll(db);
 
+            var byDate = new List<HistoryRow>(rows);
+            HistoryQuery.Sort(byDate, HistorySortKey.StartedAt, descending: true);
+            var rank = new Dictionary<long, int>();
+            for (var i = 0; i < byDate.Count; i++) rank[byDate[i].SessionId] = i + 1;
+
             var sb = new StringBuilder();
             sb.AppendLine(string.Join(Separator, Columns));
             foreach (var row in rows)
@@ -38,7 +44,9 @@ internal static class HistoryDump
                 for (var i = 0; i < Columns.Length; i++)
                 {
                     if (i > 0) sb.Append(Separator);
-                    sb.Append(Cell(row, Columns[i]));
+                    sb.Append(Columns[i] == "dtRank"
+                        ? rank[row.SessionId].ToString(CultureInfo.InvariantCulture)
+                        : Cell(row, Columns[i]));
                 }
                 sb.AppendLine();
             }
@@ -70,6 +78,7 @@ internal static class HistoryDump
         "repId" => row.ReplayId?.ToString(CultureInfo.InvariantCulture) ?? "",
         "repCount" => row.ReplayCount.ToString(CultureInfo.InvariantCulture),
         "recKind" => row.KindText,
+        "dtRank" => throw new InvalidOperationException("dtRank は Run が全行を並べてから入れる"),
         _ => throw new InvalidOperationException(
                  "HistoryDump.Columns に " + column + " があるのに、吐き方が書かれていない"),
     };

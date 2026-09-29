@@ -68,6 +68,29 @@
     </ItemGroup>
   </Target>
 
+  <Target Name="Th09GenerateBuildInfo" BeforeTargets="BeforeCompile">
+    <PropertyGroup>
+      <Th09BuildInfoFile>$(IntermediateOutputPath)Th09BuildInfo.g.cs</Th09BuildInfoFile>
+      <Th09IsDevLiteral>false</Th09IsDevLiteral>
+      <Th09IsDevLiteral Condition="'$(Th09Dev)' == 'true'">true</Th09IsDevLiteral>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)" Condition="!Exists('$(IntermediateOutputPath)')" />
+    <ItemGroup>
+      <Th09BuildInfoLine Remove="@(Th09BuildInfoLine)" />
+      <Th09BuildInfoLine Include="namespace TH09.Shell.Data%3B" />
+      <Th09BuildInfoLine Include="internal static class BuildInfo" />
+      <Th09BuildInfoLine Include="{" />
+      <Th09BuildInfoLine Include="    internal static bool IsDev =&gt; $(Th09IsDevLiteral)%3B" />
+      <Th09BuildInfoLine Include="}" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(Th09BuildInfoFile)" Lines="@(Th09BuildInfoLine)"
+                       Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(Th09BuildInfoFile)" />
+      <FileWrites Include="$(Th09BuildInfoFile)" />
+    </ItemGroup>
+  </Target>
+
   <PropertyGroup>
     <Th09DriveOutDir>$(MSBuildThisFileDirectory)..\TH09.Drive\bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</Th09DriveOutDir>
   </PropertyGroup>

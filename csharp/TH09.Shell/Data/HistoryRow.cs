@@ -58,10 +58,18 @@ internal sealed class HistoryRow
 
     public required string? StartedAtRaw { get; init; }
 
+    public required SessionWhenValue When { get; init; }
+
+    public DateTime? SortAt => When.At;
+
     public string StartedAtText
     {
         get
         {
+            if (When.FromReplay)
+                return When.At is DateTime t
+                    ? t.ToString(When.HasTime ? "yyyy-MM-dd HH:mm:ss" : "yyyy-MM-dd", CultureInfo.InvariantCulture)
+                    : ReplayFormat.Missing;
             if (StartedAtRaw is not string s || s.Length == 0) return ReplayFormat.Missing;
             var head = s.Length >= 19 ? s[..19] : s;
             return head.Replace('T', ' ');

@@ -63,6 +63,7 @@ internal static class HistoryQuery
         var lastRoundLives = FoldLastRoundLives(db);
         var lastBonusScore = FoldLastBonusScore(db);
         var scanLinks = RecordKinds.ReadScanLinks(db);
+        var when = SessionWhen.Load(db);
         var rows = new List<HistoryRow>();
 
         TrackerDb.ForEachRow(db, SqlSessions, r =>
@@ -91,6 +92,7 @@ internal static class HistoryQuery
             {
                 SessionId = sessionId,
                 StartedAtRaw = startedAt,
+                When = when.For(sessionId, startedAt),
                 Status = status,
                 GameMode = gameMode,
                 Difficulty = difficulty,
@@ -157,7 +159,7 @@ internal static class HistoryQuery
     private static int CompareBy(HistoryRow a, HistoryRow b, HistorySortKey key, bool desc) => key switch
     {
         HistorySortKey.SessionId => Cmp<long>(a.SessionId, b.SessionId, desc),
-        HistorySortKey.StartedAt => CmpText(a.StartedAtRaw, b.StartedAtRaw, desc),
+        HistorySortKey.StartedAt => Cmp(a.SortAt, b.SortAt, desc),
         HistorySortKey.Mode => Cmp(a.GameMode, b.GameMode, desc),
         HistorySortKey.Difficulty => Cmp(a.Difficulty, b.Difficulty, desc),
         HistorySortKey.P1Character => Cmp(ReplayLabels.DisplayRank(a.P1Character),

@@ -282,8 +282,8 @@ Windows のレジストリや、ほかのフォルダには書きません（走
 
 ### 新しい版に入れ替える
 
-同じフォルダの `UPDATE.md` を見てください。
-`EnmaCho.exe` は起動したときに新しい版があるかを 1 回だけ確かめ、あれば上の帯のすぐ下に「新しいバージョンがあります。」と出します。
+`EnmaCho.exe` は起動したときに新しい版があるかを 1 回だけ確かめ、あれば「新しいバージョンがあります。いま更新しますか？」と聞きます。
+「はい」を押すと、閉じて新しい版を入れ、開き直します。うまくいかないときの手での入れ替え方は、同じフォルダの `UPDATE.md` を見てください。
 
 ### 別の場所・別の PC へ移す
 
@@ -364,10 +364,11 @@ Windows のレジストリや、ほかのフォルダには書きません（走
 
 ```
 dotnet publish -c Release -r win-x64 csharp/TH09.Drive/TH09.Drive.csproj
+dotnet publish -c Release -r win-x64 csharp/TH09.Update/TH09.Update.csproj
 dotnet publish -c Release -r win-x64 csharp/TH09.Shell/TH09.Shell.csproj
 ```
 
-それぞれのプロジェクトの `bin/Release/<版>/win-x64/publish/` にできる exe と DLL を、同じフォルダに集めます（`EnmaCho.exe` と `EnmaCho_drive.exe` が隣どうしになるように）。
+それぞれのプロジェクトの `bin/Release/<版>/win-x64/publish/` にできる exe と DLL を、同じフォルダに集めます（`EnmaCho.exe` と `EnmaCho_drive.exe` と `EnmaCho_update.exe` が隣どうしになるように）。`EnmaCho_update.exe` は、起動時の「いま更新しますか？」で「はい」を押したときに使う、入れ替え用の exe です。
 
 ### 注入用の 2 ファイル（C、32bit）
 

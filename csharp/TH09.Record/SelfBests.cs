@@ -324,7 +324,7 @@ public static class SelfBests
         DecodedStoryReplays(SqliteConnection c)
     {
         using var cmd = c.CreateCommand();
-        cmd.CommandText = "SELECT replay_id,mode,difficulty,p1_char,is_own,decoded_json FROM replays"
+        cmd.CommandText = "SELECT replay_id,mode,difficulty,p1_char,owner_side,own_override,decoded_json FROM replays"
                         + " WHERE decode_status='decoded' AND mode IN (0,1)";
         using var r = cmd.ExecuteReader();
         while (r.Read())
@@ -334,8 +334,8 @@ public static class SelfBests
                 r.IsDBNull(1) ? null : r.GetInt64(1),
                 r.IsDBNull(2) ? null : r.GetInt64(2),
                 r.IsDBNull(3) ? null : r.GetInt64(3),
-                !r.IsDBNull(4) && r.GetInt64(4) != 0,
-                r.IsDBNull(5) ? null : r.GetString(5));
+                ReplayOwn.Of(r.IsDBNull(5) ? null : r.GetInt64(5), r.IsDBNull(4) ? null : r.GetInt64(4)).Own,
+                r.IsDBNull(6) ? null : r.GetString(6));
         }
     }
 

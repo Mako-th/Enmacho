@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:TH09.Shell.ViewModels"
         xmlns:views="using:TH09.Shell.Views"
+        xmlns:data="using:TH09.Shell.Data"
         x:Class="TH09.Shell.Views.MainWindow"
         x:DataType="vm:ShellViewModel"
         Width="1280" Height="800"
@@ -526,6 +527,11 @@
                   <TextBlock Name="SetOwnPlayerNameNote" Classes="slabel" TextWrapping="Wrap"
                              Text="{Binding Drive.Settings.OwnPlayerNameNote}"
                              IsVisible="{Binding Drive.Settings.HasOwnPlayerNameNote}" />
+                  <TextBlock Name="SetOwnNameExplain" Classes="slabel" TextWrapping="Wrap"
+                             Text="{x:Static data:ReplayOwnLabels.OwnNameExplain}" />
+                  <CheckBox Name="SetOwnNameCaseSensitive"
+                            Content="{x:Static data:ReplayOwnLabels.CaseSensitive}"
+                            IsChecked="{Binding Drive.Settings.OwnNameCaseSensitive}" />
                   <TextBlock Classes="slabel" TextWrapping="Wrap"
                              Text="登録済みのリプレイには、既存Replay一括登録をやり直すと効きます。" />
 
@@ -562,6 +568,49 @@
 
                   <TextBlock Classes="slabel" TextWrapping="Wrap"
                              Text="リプレイの登録は、この 3 つ（ゲームのフォルダ・ユーザー側のデータ・追加の置き場）の配下を全部見ます。" />
+
+                  <TextBlock Classes="slabel" Text="{x:Static data:ReplayOwnLabels.OwnDirsHeader}" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <ListBox Grid.Column="0" Name="SetOwnReplayDirs" Height="70"
+                             ItemsSource="{Binding Drive.Settings.OwnReplayDirs}"
+                             SelectedIndex="{Binding Drive.Settings.SelectedOwnReplayDirIndex}" />
+                    <StackPanel Grid.Column="1" Orientation="Vertical" Spacing="6">
+                      <Button Name="SettingsAddOwnReplayDir" Classes="bar" Content="足す…"
+                              MinWidth="80" Click="OnAddOwnReplayDir" />
+                      <Button Name="SetOwnReplayDirRemove" Classes="bar" Content="外す"
+                              MinWidth="80"
+                              IsEnabled="{Binding Drive.Settings.CanRemoveOwnReplayDir}"
+                              Command="{Binding Drive.Settings.RemoveOwnReplayDirCommand}" />
+                    </StackPanel>
+                  </Grid>
+                  <TextBlock Classes="slabel" TextWrapping="Wrap"
+                             Text="{x:Static data:ReplayOwnLabels.OwnDirsNote}" />
+
+                  <TextBlock Classes="slabel" Text="{x:Static data:ReplayOwnLabels.ExcludedHeader}" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <ListBox Grid.Column="0" Name="SetExcludedReplays" Height="90"
+                             ItemsSource="{Binding Drive.Settings.ExcludedReplays}"
+                             SelectedIndex="{Binding Drive.Settings.SelectedExcludedReplayIndex}">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ExcludedReplayRow">
+                          <TextBlock Text="{Binding Text}" />
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                    <Button Grid.Column="1" Name="SetExcludedReplayRemove" Classes="bar" Content="外す"
+                            VerticalAlignment="Top" MinWidth="80"
+                            IsEnabled="{Binding Drive.Settings.CanRemoveExcludedReplay}"
+                            Command="{Binding Drive.Settings.RemoveExcludedReplayCommand}" />
+                  </Grid>
+                  <TextBlock Name="SetExcludedEmpty" Classes="slabel"
+                             Text="{x:Static vm:AppSettingsViewModel.ExcludedEmptyText}"
+                             IsVisible="{Binding Drive.Settings.ExcludedIsEmpty}" />
+                  <TextBlock Name="SetExcludedSaveNote" Classes="slabel" TextWrapping="Wrap"
+                             Text="{x:Static data:ReplayOwnLabels.ExcludedSaveNote}" />
+                  <TextBlock Classes="slabel" TextWrapping="Wrap"
+                             Text="{x:Static data:ReplayOwnLabels.ExcludedNote}" />
+                  <TextBlock Classes="slabel" TextWrapping="Wrap"
+                             Text="{x:Static data:ReplayOwnLabels.ExcludedWhere}" />
                 </StackPanel>
               </ScrollViewer>
             </TabItem>
@@ -1029,6 +1078,29 @@
                     Command="{Binding Drive.ConfirmMonitorStopCommand}" />
             <Button Name="MonitorStopConfirmNo" Content="いいえ" MinWidth="80"
                     Command="{Binding Drive.CancelMonitorStopCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border Name="ReplayDeleteConfirm" Grid.Row="0" Grid.RowSpan="3"
+            IsVisible="{Binding ReplayTab.IsDeleteConfirmOpen}" Background="{StaticResource Scrim}">
+      <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
+              CornerRadius="4" Padding="20" MaxWidth="560"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Orientation="Vertical" Spacing="12">
+          <TextBlock Text="{x:Static data:ReplayOwnLabels.DeleteHeader}" FontWeight="Bold" />
+          <TextBlock Text="{Binding ReplayTab.DeleteConfirmText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Vertical" Spacing="8" HorizontalAlignment="Stretch">
+            <Button Name="ReplayDeleteAndExclude" Content="{x:Static data:ReplayOwnLabels.DeleteAndExclude}"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                    Command="{Binding ReplayTab.ConfirmDeleteAndExcludeCommand}" />
+            <Button Name="ReplayDeleteOnly" Content="{x:Static data:ReplayOwnLabels.DeleteOnly}"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                    Command="{Binding ReplayTab.ConfirmDeleteOnlyCommand}" />
+            <Button Name="ReplayDeleteCancel" Content="{x:Static data:ReplayOwnLabels.DeleteCancel}"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                    Command="{Binding ReplayTab.CancelDeleteCommand}" />
           </StackPanel>
         </StackPanel>
       </Border>

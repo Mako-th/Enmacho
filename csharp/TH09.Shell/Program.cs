@@ -125,6 +125,21 @@ internal static class Program
             return Data.HistoryEditDump.Run(args[1], args[2], args[3], args[4]);
         if (args.Length == 2 && args[0] == Data.ReplayOwnDump.Flag)
             return Data.ReplayOwnDump.Run(args[1]);
+        if (args.Length >= 1 && args[0] == Data.ReplayOwnUiDump.Flag)
+        {
+            if (args.Length != 5)
+            {
+                Console.Error.WriteLine("使い方: " + exe + " " + Data.ReplayOwnUiDump.Flag
+                                        + " <db> <layer0> <config.json> <書けない config.json>");
+                return 2;
+            }
+            if (!OperatingSystem.IsWindows())
+            {
+                Console.Error.WriteLine("リプレイの所有・削除の吐き出しは Windows でだけ動きます。");
+                return 3;
+            }
+            return Data.ReplayOwnUiDump.Run(args[1], args[2], args[3], args[4]);
+        }
         if (args.Length >= 1 && args[0] == Data.StreamPanelViewDump.Flag)
         {
             if (args.Length < 2
@@ -169,6 +184,8 @@ internal static class Program
             return Data.HistorySignatureDump.Run(args[1]);
         if (args.Length == 3 && args[0] == Data.UpdateNoticeDump.Flag)
             return Data.UpdateNoticeDump.Run(args[1], args[2]);
+        if (args.Length == 2 && args[0] == Data.UpdateNoticeDump.CleanFlag)
+            return Data.UpdateNoticeDump.RunClean(args[1]);
 
         var unknown = new List<string>();
         for (int i = 0; i < args.Length; i++)

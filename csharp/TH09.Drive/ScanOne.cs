@@ -341,9 +341,10 @@ public static class ScanOne
     {
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT " + Cols.Replays.Mode + "," + Cols.Replays.Difficulty + ","
-                        + Cols.Replays.P1Char + "," + Cols.Replays.IsOwn + ","
+                        + Cols.Replays.P1Char + ","
                         + Cols.Replays.DecodeStatus + "," + Cols.Replays.DecodedJson + ","
-                        + Cols.Replays.Source
+                        + Cols.Replays.Source + ","
+                        + Cols.Replays.OwnerSide + "," + Cols.Replays.OwnOverride
                         + " FROM " + Cols.Replays.Table + " WHERE " + Cols.Replays.ReplayId + "=$0";
         cmd.Parameters.AddWithValue("$0", replayId);
         using var r = cmd.ExecuteReader();
@@ -354,9 +355,9 @@ public static class ScanOne
             r.IsDBNull(0) ? null : r.GetInt64(0),
             r.IsDBNull(1) ? null : r.GetInt64(1),
             r.IsDBNull(2) ? null : r.GetInt64(2),
-            r.IsDBNull(3) ? null : r.GetInt64(3),
-            r.IsDBNull(5) ? null : r.GetString(5));
-        return (row, r.IsDBNull(4) ? null : r.GetString(4), r.IsDBNull(6) ? null : r.GetString(6));
+            ScanTargets.OwnFlag(r.IsDBNull(7) ? null : r.GetInt64(7), r.IsDBNull(6) ? null : r.GetInt64(6)),
+            r.IsDBNull(4) ? null : r.GetString(4));
+        return (row, r.IsDBNull(3) ? null : r.GetString(3), r.IsDBNull(5) ? null : r.GetString(5));
     }
 
     private static readonly string Lf = ((char)10).ToString();

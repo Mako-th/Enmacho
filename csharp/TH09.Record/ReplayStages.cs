@@ -119,6 +119,21 @@ public static class ReplayStages
                ? MatchSidesOf(node)
                : null;
 
+    public static int? HumanSideOf(long? mode, MatchSides? sides)
+    {
+        if (mode is 0 or 1) return 1;
+        if (mode != 2) return null;
+        return sides switch
+        {
+            MatchSides.HumanVsCpu => 1,
+            MatchSides.CpuVsHuman => 2,
+            _ => null,
+        };
+    }
+
+    public static int? HumanSideOf(long? mode, string? decodedJson)
+        => HumanSideOf(mode, mode == 2 ? MatchSidesOf(decodedJson) : null);
+
     public static IReadOnlyList<P1Stage> DropEmptyHead(IReadOnlyList<P1Stage> raw)
     {
         var first = -1;

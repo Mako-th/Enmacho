@@ -125,7 +125,6 @@ internal static class ReplayListQuery
             var p2Char = TrackerDb.Int32OrNull(r, 7);
             var p1NameRaw = TrackerDb.StringOrNull(r, 8);
             var p2NameRaw = TrackerDb.StringOrNull(r, 9);
-            var isOwn = TrackerDb.Int32OrNull(r, 10);
             var ownerSideRaw = TrackerDb.Int32OrNull(r, 11);
             var sessionId = TrackerDb.Int64OrNull(r, 12);
             var sessionCount = r.GetInt32(13);
@@ -141,7 +140,7 @@ internal static class ReplayListQuery
             var sessionDifficulty = TrackerDb.Int32OrNull(r, 23);
 
             var section = mode == ModeMatch ? ReplaySection.Match : ReplaySection.StoryExtra;
-            var own = ResolveOwnSide(isOwn, ownerSideRaw, ownOverride);
+            var own = ResolveOwnSide(ownerSideRaw, ownOverride);
 
             var scanLinked = sessionId is long slid
                              && scanLinks.Pairs.Contains((slid, replayId));
@@ -154,6 +153,7 @@ internal static class ReplayListQuery
                                              useSession ? p1Control : null,
                                              useSession ? p2Control : null);
             var (playedAt, hasTime) = ResolvePlayedAt(replayDate, mtime);
+            var humanSide = section == ReplaySection.Match ? HumanSideOf(matchMode) : null;
 
             StageFold? sf = sessionId is long sid && stages.TryGetValue(sid, out var s) ? s : null;
             RoundFold? rf = sessionId is long sid2 && rounds.TryGetValue(sid2, out var f) ? f : null;
@@ -178,9 +178,9 @@ internal static class ReplayListQuery
                 P1Character = p1Char,
                 P2Character = p2Char,
                 P1Name = ResolveSideName(section, 1, p1NameRaw, playerName, own,
-                                         useSession ? p1Control : null),
+                                         useSession ? p1Control : null, humanSide),
                 P2Name = ResolveSideName(section, 2, p2NameRaw, playerName, own,
-                                         useSession ? p2Control : null),
+                                         useSession ? p2Control : null, humanSide),
                 Own = own,
                 MatchMode = matchMode,
                 FinalScore = isStory ? sf?.MaxScore : null,
@@ -201,10 +201,22 @@ internal static class ReplayListQuery
         return rows;
     }
 
-    public static OwnSide ResolveOwnSide(int? isOwn, int? ownerSide, int? ownOverride = null)
-        => ownOverride is int over
-            ? (over is 1 or 2 ? (OwnSide)over : OwnSide.None)
-            : (isOwn == 1 && ownerSide is 1 or 2 ? (OwnSide)ownerSide.Value : OwnSide.None);
+    public static OwnSide ResolveOwnSide(int? ownerSide, int? ownOverride = null)
+    {
+        var (own, side) = TH09.Record.ReplayOwn.Of(ownOverride, ownerSide);
+        if (!own) return OwnSide.None;
+        return side is int s ? (OwnSide)s : OwnSide.Unknown;
+    }
+
+    public static int? HumanSideOf(MatchMode mode)
+        => TH09.Record.ReplayStages.HumanSideOf(ModeMatch, mode switch
+        {
+            MatchMode.HumanVsHuman => TH09.Record.MatchSides.HumanVsHuman,
+            MatchMode.HumanVsCpu => TH09.Record.MatchSides.HumanVsCpu,
+            MatchMode.CpuVsHuman => TH09.Record.MatchSides.CpuVsHuman,
+            MatchMode.CpuVsCpu => TH09.Record.MatchSides.CpuVsCpu,
+            _ => (TH09.Record.MatchSides?)null,
+        });
 
     public static bool SessionUsable(bool scanLinked, ReplaySection section,
                                      int? replayDifficulty, int? replayP1, int? replayP2,
@@ -245,13 +257,14 @@ internal static class ReplayListQuery
 
     public static string? ResolveSideName(ReplaySection section, int side,
                                           string? sideName, string? playerName,
-                                          OwnSide own, int? control)
+                                          OwnSide own, int? control, int? humanSide = null)
     {
         var named = Blank(playerName) ? null : (LooksLikeSaveTime(playerName!) ? null : playerName);
         if (section == ReplaySection.StoryExtra) return side == 1 ? named : null;
         if (!Blank(sideName)) return sideName;
         if (control == ControlCpu) return ReplayLabels.CpuName;
         if ((int)own == side) return named;
+        if (humanSide == side) return named;
         return null;
     }
 

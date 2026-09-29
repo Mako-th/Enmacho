@@ -466,7 +466,6 @@ public static class ScanTargets
             for (var i = 0; i < modes.Count; i++) values.Add((names[i], modes[i]));
             where.Add(Cols.Replays.Mode + " IN (" + string.Join(",", names) + ")");
         }
-        if (filter.Own) where.Add(Cols.Replays.IsOwn + "=1");
         if (filter.Difficulties is { Count: > 0 } diffs)
         {
             var names = diffs.Select((_, i) => "$d" + Num(i)).ToList();
@@ -484,7 +483,8 @@ public static class ScanTargets
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT " + Cols.Replays.ReplayId + "," + Cols.Replays.Mode + ","
                         + Cols.Replays.Difficulty + "," + Cols.Replays.P1Char + ","
-                        + Cols.Replays.IsOwn + "," + Cols.Replays.DecodedJson
+                        + Cols.Replays.OwnerSide + "," + Cols.Replays.OwnOverride + ","
+                        + Cols.Replays.DecodedJson
                         + " FROM " + Cols.Replays.Table
                         + " WHERE " + string.Join(" AND ", where)
                         + " ORDER BY " + Cols.Replays.ReplayId;
@@ -493,16 +493,21 @@ public static class ScanTargets
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
+            var isOwn = OwnFlag(r.IsDBNull(5) ? null : r.GetInt64(5), r.IsDBNull(4) ? null : r.GetInt64(4));
+            if (filter.Own && isOwn == 0) continue;
             rows.Add(new ReplayRow(
                 r.GetInt64(0),
                 r.IsDBNull(1) ? null : r.GetInt64(1),
                 r.IsDBNull(2) ? null : r.GetInt64(2),
                 r.IsDBNull(3) ? null : r.GetInt64(3),
-                r.IsDBNull(4) ? null : r.GetInt64(4),
-                r.IsDBNull(5) ? null : r.GetString(5)));
+                isOwn,
+                r.IsDBNull(6) ? null : r.GetString(6)));
         }
         return rows;
     }
+
+    internal static long OwnFlag(long? ownOverride, long? ownerSide)
+        => ReplayOwn.Of(ownOverride, ownerSide).Own ? 1 : 0;
 
     private static long? LinkedSessionId(SqliteConnection conn, long replayId)
     {

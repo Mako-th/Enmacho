@@ -67,6 +67,24 @@ public static class ScanProgressLines
         return int.TryParse(body, NumberStyles.None, CultureInfo.InvariantCulture, out count);
     }
 
+    public const string ImportExcludedPrefix = "登録しないリプレイ（除外）: ";
+
+    public const string ImportExcludedSuffix = " 件を飛ばしました。";
+
+    public static string ImportExcluded(int count) =>
+        ImportExcludedPrefix + Num(count) + ImportExcludedSuffix;
+
+    public static bool TryParseImportExcluded(string? line, out int count)
+    {
+        count = 0;
+        if (string.IsNullOrEmpty(line)) return false;
+        var text = StripTimestamp(line);
+        if (!text.StartsWith(ImportExcludedPrefix, StringComparison.Ordinal)) return false;
+        if (!text.EndsWith(ImportExcludedSuffix, StringComparison.Ordinal)) return false;
+        var body = text[ImportExcludedPrefix.Length..^ImportExcludedSuffix.Length];
+        return int.TryParse(body, NumberStyles.None, CultureInfo.InvariantCulture, out count);
+    }
+
     public const string SweptStalePathsPrefix = "移動したリプレイの片付け: ";
 
     public const string SweptStalePathsSuffix = " 件を片付けました。";

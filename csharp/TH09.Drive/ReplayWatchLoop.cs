@@ -87,7 +87,7 @@ public sealed class ReplayWatchLoop
             foreach (var path in !scoped || recurse ? Rglob(root) : MatchesIn(root))
             {
                 if (scanning && ReplaySlots.IsSlotFile(path, _roots)) continue;
-                if (TryRegister(path)) n++;
+                if (TryRegister(path) == Outcome.Registered) n++;
             }
         }
         return n;
@@ -151,8 +151,11 @@ public sealed class ReplayWatchLoop
                     continue;
                 }
                 if (_known.TryGetValue(path, out var old) && old == sig.Value) continue;
-                if (TryRegister(path)) registered++;
-                else held++;
+                switch (TryRegister(path))
+                {
+                    case Outcome.Registered: registered++; break;
+                    case Outcome.Held: held++; break;
+                }
             }
         }
         var missing = new List<string>();
@@ -184,22 +187,34 @@ public sealed class ReplayWatchLoop
         Run(() => !token.WaitHandle.WaitOne(interval));
 
 
-    private bool TryRegister(string path)
+    public int ExcludedCount { get; private set; }
+
+    private enum Outcome { Registered, Held, Excluded }
+
+    private Outcome TryRegister(string path)
     {
         try
         {
-            var status = Register(path);
+            var registered = Register(path, out var status);
+            if (!registered)
+            {
+                ExcludedCount++;
+                _log(ExcludedPrefix + path);
+                return Outcome.Excluded;
+            }
             _log(RegisteredPrefix + path + " [" + status + "]");
-            return true;
+            return Outcome.Registered;
         }
         catch (Exception exc)
         {
             _log(HeldPrefix + path + " " + exc.GetType().Name + ": " + exc.Message);
-            return false;
+            return Outcome.Held;
         }
     }
 
-    private string Register(string path)
+    public const string ExcludedPrefix = "除外: ";
+
+    private bool Register(string path, out string status)
     {
         var decoded = ReplayDecode.DecodeReplay(path);
         var source = ReplayOwner.ReplaySource(path, decoded);
@@ -220,8 +235,9 @@ public sealed class ReplayWatchLoop
             P1Name: decoded.P1Name,
             P2Name: decoded.P2Name,
             DecodedJson: ReplayFactsJson.DecodedJson(decoded));
-        _registrar.Register(path, facts);
-        return decoded.Status;
+        var registration = _registrar.Register(path, facts);
+        status = decoded.Status;
+        return !registration.Excluded;
     }
 
 

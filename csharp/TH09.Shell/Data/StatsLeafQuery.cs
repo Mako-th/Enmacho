@@ -59,6 +59,8 @@ internal sealed class StatsPayload
 
     public required int NameConflict { get; init; }
 
+    public int OwnUnknownSideSkipped { get; init; }
+
     public IReadOnlyList<StatsMatchRow> MatchRows(StatsSection section)
         => Matches.TryGetValue(section, out var v) ? v : [];
 }
@@ -223,8 +225,10 @@ internal static class StatsLeafQuery
         }
         catch (Exception) { seats.Clear(); }
 
+        var sessionWhen = SessionWhen.Load(db);
         var (keepNames, dropNames, myName) = OwnNames(db);
         var names = keepNames.Select(x => x.Name).ToList();
+        var ignoreCase = TH09.Record.SessionSide.IgnoreCaseFromConfig();
 
         var matches = new Dictionary<StatsSection, List<StatsMatchRow>>
         {
@@ -244,6 +248,7 @@ internal static class StatsLeafQuery
         var sessionCount = 0;
         var nameUsed = 0;
         var nameConflict = 0;
+        var ownUnknownSkipped = 0;
 
         TrackerDb.ForEachRow(db, SqlSessions, r =>
         {
@@ -266,17 +271,19 @@ internal static class StatsLeafQuery
 
             var section = Bucket(gameMode, source, execType, p1Control, p2Control);
             seats.TryGetValue(sid, out var seat);
-            if (SideByName(p1Name, p2Name, names) is int byName)
+            if (SideByName(p1Name, p2Name, names, ignoreCase) is int byName)
             {
                 nameUsed++;
                 if (ownerSide is 1 or 2 && ownerSide != byName) nameConflict++;
             }
             var (side, isOwn, provisional) =
                 SelfSide(ownOverride, ownerSide, p1Name, p2Name, names, replayId, p1Control, p2Control,
-                         seat, execType);
+                         seat, execType, ignoreCase);
             if (side is not int me)
             {
                 skips[section]++;
+                if (replayId is not null && TH09.Record.ReplayOwn.Of(ownOverride, ownerSide) is (true, null))
+                    ownUnknownSkipped++;
                 return;
             }
             var foe = me == 1 ? 2 : 1;
@@ -300,8 +307,9 @@ internal static class StatsLeafQuery
             long? bossFrames = metricsMissing > 0 ? null : boss;
             long? totalFrames = frames == 0 ? null : frames;
 
-            var whenText = FormatWhen(startedAt);
-            var when = ReplayListQuery.ParseMtime(startedAt);
+            var sw = sessionWhen.For(sid, startedAt);
+            var whenText = sw.FromReplay ? FormatWhen(sw.At, sw.HasTime) : FormatWhen(startedAt);
+            var when = sw.At;
             var myChar = me == 1 ? p1Char : p2Char;
             var foeChar = me == 1 ? p2Char : p1Char;
             var stages = stagesBySession.TryGetValue(sid, out var sl) ? sl : [];
@@ -388,6 +396,7 @@ internal static class StatsLeafQuery
             Untagged = matches.Values.Sum(v => v.Count) + plays.Count,
             NameUsed = nameUsed,
             NameConflict = nameConflict,
+            OwnUnknownSideSkipped = ownUnknownSkipped,
         };
     }
 
@@ -468,6 +477,11 @@ internal static class StatsLeafQuery
 
     private static string? RoundStatus(string? v) => v == RoundCompleted ? null : v;
 
+    public static string FormatWhen(DateTime? at, bool hasTime)
+        => at is DateTime t
+            ? t.ToString(hasTime ? "yyyy/MM/dd HH:mm:ss" : "yyyy/MM/dd", CultureInfo.InvariantCulture)
+            : "";
+
     public static string FormatWhen(string? startedAt)
     {
         if (string.IsNullOrEmpty(startedAt)) return "";
@@ -489,12 +503,14 @@ internal static class StatsLeafQuery
 
     public static (int? Side, bool IsOwn, bool Provisional) SelfSide(
         int? ownOverride, int? ownerSide, string? p1Name, string? p2Name, IReadOnlyList<string> names,
-        long? replayId, int? p1Control, int? p2Control, int? seat, string? execType)
+        long? replayId, int? p1Control, int? p2Control, int? seat, string? execType,
+        bool ignoreCase = true)
         => TH09.Record.SessionSide.Of(ownOverride, ownerSide, p1Name, p2Name, names,
-                                      replayId, p1Control, p2Control, seat, execType);
+                                      replayId, p1Control, p2Control, seat, execType, ignoreCase);
 
-    public static int? SideByName(string? p1Name, string? p2Name, IReadOnlyList<string> names)
-        => TH09.Record.SessionSide.SideByName(p1Name, p2Name, names);
+    public static int? SideByName(string? p1Name, string? p2Name, IReadOnlyList<string> names,
+                                  bool ignoreCase = true)
+        => TH09.Record.SessionSide.SideByName(p1Name, p2Name, names, ignoreCase);
 
     public static (List<(string Name, int Count)> Keep, List<(string Name, int Count)> Drop, string? MyName)
         OwnNames(AnalysisDb db)
@@ -1057,7 +1073,11 @@ internal static class StatsNotes
         return "自分側が決められず集計から外した記録 " + N(total) + " 件"
              + (total > 0 ? "（内訳: " + string.Join(" / ", parts) + "）" : "")
              + " ／ 名前で自分側を決めた " + N(p.NameUsed)
-             + " 件・そのうち replays.owner_side と食い違い " + N(p.NameConflict) + " 件";
+             + " 件・そのうち replays.owner_side と食い違い " + N(p.NameConflict) + " 件"
+             + (p.OwnUnknownSideSkipped > 0
+                 ? " ／ 自分のものだが側が分からず外した " + N(p.OwnUnknownSideSkipped)
+                   + " 件（上の外した記録の内数）"
+                 : "");
     }
 }
 

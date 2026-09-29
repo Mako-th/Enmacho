@@ -260,6 +260,23 @@ internal static class AppSettingsFormDump
                     form.SelectedOwnPlayerNameIndex = ownAt;
                     break;
                 case "owndel": form.RemoveOwnPlayerNameCommand.Execute(null); break;
+                case "owndir": form.AddOwnReplayDir(arg); break;
+                case "owndirsel" when int.TryParse(arg, NumberStyles.Integer, CultureInfo.InvariantCulture,
+                                                   out var ownDirAt):
+                    form.SelectedOwnReplayDirIndex = ownDirAt;
+                    break;
+                case "owndirdel": form.RemoveOwnReplayDirCommand.Execute(null); break;
+                case "exsel" when int.TryParse(arg, NumberStyles.Integer, CultureInfo.InvariantCulture,
+                                               out var exAt):
+                    form.SelectedExcludedReplayIndex = exAt;
+                    break;
+                case "exdel": form.RemoveExcludedReplayCommand.Execute(null); break;
+                case "case": form.OwnNameCaseSensitive = arg == "1"; break;
+                case "extsave":
+                    _ = ExcludedReplaysSave.Add([new TH09.Record.ExcludedReplayEntry(
+                        arg, "p", "2026-09-29T00:00:00+09:00")]);
+                    break;
+                case "refreshex": form.RefreshExcludedReplays(); break;
                 case "gamedir": form.SetGameDir(arg); break;
                 case "extra": form.AddExtraReplayDir(arg); break;
                 case "extrasel" when int.TryParse(arg, NumberStyles.Integer, CultureInfo.InvariantCulture,
@@ -332,7 +349,7 @@ internal static class AppSettingsFormDump
         return 0;
     }
 
-    private static bool InRealConfigDir(string path)
+    internal static bool InRealConfigDir(string path)
     {
         if (!OperatingSystem.IsWindows()) return false;
         var real = Path.GetDirectoryName(Full(Paths.Default.ConfigPath)) ?? "";

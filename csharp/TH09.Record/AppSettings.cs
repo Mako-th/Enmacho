@@ -112,6 +112,9 @@ public sealed record AppSettings(
     IReadOnlyList<string> OwnPlayerNames,
     IReadOnlyList<string> ScanDirs,
     bool ScanNoRecurse,
+    IReadOnlyList<string> OwnReplayDirs,
+    bool OwnNameIgnoreCase,
+    IReadOnlyList<ExcludedReplayEntry> ExcludedReplays,
     IReadOnlyList<SettingNote> Notes);
 
 public sealed record StreamModeSettings(int Width, int Height, double FontScale, string Background,
@@ -173,6 +176,10 @@ public static class ConfigStore
 
     public const bool ScanNoRecurseDefault = false;
 
+    public const string OwnReplayDirsKey = "own_replay_dirs";
+
+    public const bool OwnNameIgnoreCaseDefault = true;
+
     public const string BackupKeepOneKey = "backup_keep_one";
 
     public const bool BackupKeepOneDefault = true;
@@ -229,6 +236,9 @@ public static class ConfigStore
         AutoImportOnStartKey,
         ScanDirsKey,
         ScanNoRecurseKey,
+        OwnReplayDirsKey,
+        Paths.OwnNameIgnoreCaseKey,
+        ExcludedReplays.Key,
     ];
 
     public static readonly string[] TickHookWords = ["auto", "on", "off"];
@@ -313,6 +323,10 @@ public static class ConfigStore
             OwnPlayerNames: NameList(Paths.OwnPlayerNamesKey, OwnNameFallback, extras, notes),
             ScanDirs: NameList(ScanDirsKey, ScanDirsFallback, extras, notes),
             ScanNoRecurse: Truthy(ScanNoRecurseKey, ScanNoRecurseDefault, extras, notes),
+            OwnReplayDirs: NameList(OwnReplayDirsKey, OwnReplayDirsFallback, extras, notes),
+            OwnNameIgnoreCase: Truthy(Paths.OwnNameIgnoreCaseKey, OwnNameIgnoreCaseDefault,
+                                      extras, notes),
+            ExcludedReplays: Excluded(path, notes),
             Notes: notes);
     }
 
@@ -325,6 +339,13 @@ public static class ConfigStore
             notes.Add(note);
         }
         return loaded.Entries;
+    }
+
+    private static IReadOnlyList<ExcludedReplayEntry> Excluded(string path, List<SettingNote> notes)
+    {
+        var (entries, loadNotes) = ExcludedReplays.Load(path);
+        notes.AddRange(loadNotes);
+        return entries;
     }
 
     private static bool SafeExists(string path)
@@ -455,6 +476,8 @@ public static class ConfigStore
     private const string OwnNameFallback = "自分の名前は判定しない";
 
     private const string ScanDirsFallback = "対象にするフォルダは選んでいない（絞らない）";
+
+    private const string OwnReplayDirsFallback = "自分のフォルダは決めていない";
 
     private static string[] NameList(string key, string fallback, Paths.ConfigExtras extras,
                                      List<SettingNote> notes)
@@ -808,6 +831,16 @@ public static class ConfigStore
                 break;
             case ScanNoRecurseKey:
                 w.WriteBoolean(key, s.ScanNoRecurse); break;
+            case OwnReplayDirsKey:
+                w.WriteStartArray(key);
+                foreach (var item in s.OwnReplayDirs) w.WriteStringValue(item);
+                w.WriteEndArray();
+                break;
+            case Paths.OwnNameIgnoreCaseKey:
+                w.WriteBoolean(key, s.OwnNameIgnoreCase); break;
+            case ExcludedReplays.Key:
+                ExcludedReplays.Write(w, key, s.ExcludedReplays);
+                break;
             default:
                 throw new InvalidOperationException("書き方を決めていない鍵: " + key);
         }

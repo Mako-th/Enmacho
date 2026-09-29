@@ -46,7 +46,8 @@ public static class WatchCommand
     private static T WithLoop<T>(TextWriter w, string dbPath, Paths paths,
                                  Func<ReplayWatchLoop, IReadOnlyList<string>, T> run)
     {
-        using var registrar = ReplayRegistrar.Open(dbPath);
+        using var registrar = ReplayRegistrar.Open(dbPath, ownDirs: paths.OwnReplayDirs,
+                                                   excluded: ExcludedReplays.Watcher(paths.ConfigPath));
         var roots = paths.ReplayWatchDirs();
         var own = paths.OwnNames;
         var names = ReplayOwner.OwnNames(own.PlayerName, own.Names);
@@ -64,8 +65,10 @@ public static class WatchCommand
     private static int RegisterExisting(TextWriter w, ReplayWatchLoop loop,
                                         IReadOnlyList<string>? dirs = null, bool recurse = true)
     {
+        var excludedBefore = loop.ExcludedCount;
         var imported = loop.ImportExisting(dirs, recurse);
         w.WriteLine(ScanProgressLines.ImportResult(imported));
+        w.WriteLine(ScanProgressLines.ImportExcluded(loop.ExcludedCount - excludedBefore));
         w.WriteLine(ScanProgressLines.SweptStalePaths(loop.SweepMoved()));
         return imported;
     }

@@ -46,6 +46,36 @@ internal partial class App : Application
         }
     }
 
+    private static void OnNewerVersion(ShellViewModel shell, Window window, Data.UpdateNotice.Offer offer)
+    {
+        Data.LogSource.Info("更新の確認", "新しい版があります（zip: " + (offer.ZipUrl ?? "無し") + "）");
+        if (Data.UpdateLauncher.WhyNotOffer(offer) is { } why)
+        {
+            Data.LogSource.Info("更新", "帯だけ出します（" + why + "）");
+            shell.IsUpdateNoticeVisible = true;
+            return;
+        }
+        if (window.IsVisible) _ = AskAndUpdateAsync(shell, window, offer);
+        else window.Opened += (_, _) => _ = AskAndUpdateAsync(shell, window, offer);
+    }
+
+    private static async Task AskAndUpdateAsync(ShellViewModel shell, Window window, Data.UpdateNotice.Offer offer)
+    {
+        bool yes = false;
+        try { yes = await Views.UpdatePrompt.AskAsync(window); }
+        catch (Exception ex)
+        {
+            Data.LogSource.Warn("更新", "確認を出せませんでした: " + Data.LogSource.Describe(ex));
+        }
+        Data.LogSource.Info("更新", yes ? "確認で［はい］が押されました" : "確認で［いいえ］（または閉じた）");
+        if (!yes || !Data.UpdateLauncher.TryStart(offer))
+        {
+            shell.IsUpdateNoticeVisible = true;
+            return;
+        }
+        window.Close();
+    }
+
     public override void OnFrameworkInitializationCompleted()
     {
         if (OperatingSystem.IsWindows())
@@ -67,8 +97,9 @@ internal partial class App : Application
                 shell.Drive.OfferFirstRunDb(Data.TrackerDb.MainDbPath);
                 shell.Drive.AutoImportExisting(Data.TrackerDb.MainDbPath);
                 shell.Drive.AllowAutoMonitorStart();
+                Data.UpdateLauncher.CleanOldCopies();
                 _ = Data.UpdateCheck.RunAsync(Data.UpdateNotice.CurrentVersionText,
-                                              () => shell.IsUpdateNoticeVisible = true);
+                                              offer => OnNewerVersion(shell, window, offer));
             }
 
             if (AutoPlay is { } ap)

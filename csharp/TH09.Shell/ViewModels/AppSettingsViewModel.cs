@@ -299,6 +299,82 @@ internal sealed partial class AppSettingsViewModel : ObservableObject
 
     partial void OnOwnPlayerNameDraftChanged(string value) => OwnPlayerNameNote = "";
 
+    [ObservableProperty]
+    public partial bool OwnNameCaseSensitive { get; set; }
+
+
+    public ObservableCollection<string> OwnReplayDirs { get; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRemoveOwnReplayDir))]
+    public partial int SelectedOwnReplayDirIndex { get; set; } = -1;
+
+    public bool CanRemoveOwnReplayDir
+        => SelectedOwnReplayDirIndex >= 0 && SelectedOwnReplayDirIndex < OwnReplayDirs.Count;
+
+    public void AddOwnReplayDir(string? path)
+    {
+        var trimmed = (path ?? "").Trim();
+        if (trimmed.Length == 0) return;
+        if (OwnReplayDirs.Any(d => string.Equals(d, trimmed, StringComparison.OrdinalIgnoreCase)))
+            return;
+        OwnReplayDirs.Add(trimmed);
+    }
+
+    [RelayCommand]
+    private void RemoveOwnReplayDir()
+    {
+        if (!CanRemoveOwnReplayDir) return;
+        OwnReplayDirs.RemoveAt(SelectedOwnReplayDirIndex);
+        SelectedOwnReplayDirIndex = -1;
+    }
+
+    public ObservableCollection<ExcludedReplayRow> ExcludedReplays { get; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRemoveExcludedReplay))]
+    public partial int SelectedExcludedReplayIndex { get; set; } = -1;
+
+    public bool CanRemoveExcludedReplay
+        => SelectedExcludedReplayIndex >= 0 && SelectedExcludedReplayIndex < ExcludedReplays.Count;
+
+    public const string ExcludedEmptyText = "登録しないリプレイはありません。";
+
+    public bool ExcludedIsEmpty => ExcludedReplays.Count == 0;
+
+    [RelayCommand]
+    private void RemoveExcludedReplay()
+    {
+        if (!CanRemoveExcludedReplay) return;
+        ExcludedReplays.RemoveAt(SelectedExcludedReplayIndex);
+        SelectedExcludedReplayIndex = -1;
+        OnPropertyChanged(nameof(ExcludedIsEmpty));
+    }
+
+    public void RefreshExcludedReplays()
+    {
+        ExcludedReplays.Clear();
+        foreach (var e in AppSettingsSource.Current.ExcludedReplays) ExcludedReplays.Add(new ExcludedReplayRow(e));
+        SelectedExcludedReplayIndex = -1;
+        OnPropertyChanged(nameof(ExcludedIsEmpty));
+    }
+
+    internal void PreviewOwnSettingsForShot(bool withData)
+    {
+        OwnReplayDirs.Clear();
+        ExcludedReplays.Clear();
+        OwnNameCaseSensitive = withData;
+        if (withData)
+        {
+            OwnReplayDirs.Add(@"D:\TH09\自分のリプレイ");
+            ExcludedReplays.Add(new ExcludedReplayRow(new ExcludedReplayEntry(
+                new string('a', 64), @"D:\TH09\replay\th9_07.rpy", "2026-09-29T10:15:00+09:00")));
+            ExcludedReplays.Add(new ExcludedReplayRow(new ExcludedReplayEntry(
+                new string('b', 64), @"D:\TH09\他人のリプレイ\A vs B\th9_01.rpy", "2026-09-28T21:03:00+09:00")));
+        }
+        OnPropertyChanged(nameof(ExcludedIsEmpty));
+    }
+
 
     public const string GameDirUnknownText =
         "まだ分かりません（監視で花映塚を見つけると自動で覚えます）。";
@@ -800,6 +876,14 @@ internal sealed partial class AppSettingsViewModel : ObservableObject
         SelectedOwnPlayerNameIndex = -1;
         OwnPlayerNameDraft = "";
         OwnPlayerNameNote = "";
+        OwnNameCaseSensitive = !s.OwnNameIgnoreCase;
+        OwnReplayDirs.Clear();
+        foreach (var dir in s.OwnReplayDirs) OwnReplayDirs.Add(dir);
+        SelectedOwnReplayDirIndex = -1;
+        ExcludedReplays.Clear();
+        foreach (var e in s.ExcludedReplays) ExcludedReplays.Add(new ExcludedReplayRow(e));
+        SelectedExcludedReplayIndex = -1;
+        OnPropertyChanged(nameof(ExcludedIsEmpty));
         RefreshReplayFolders();
         var missing = s.Notes.Count(n => n.Kind == ConfigStore.NoteMissing);
         var shown = s.Notes.Where(n => n.Kind != ConfigStore.NoteMissing).Select(n => n.Text).ToList();
@@ -1090,6 +1174,9 @@ internal sealed partial class AppSettingsViewModel : ObservableObject
             OwnPlayerNames: NormalizedOwnPlayerNames(),
             ScanDirs: AppSettingsSource.Current.ScanDirs,
             ScanNoRecurse: AppSettingsSource.Current.ScanNoRecurse,
+            OwnReplayDirs: [.. OwnReplayDirs.Select(d => d.Trim()).Where(d => d.Length > 0)],
+            OwnNameIgnoreCase: !OwnNameCaseSensitive,
+            ExcludedReplays: [.. ExcludedReplays.Select(r => r.Entry)],
             Notes: []);
         error = "";
         return true;

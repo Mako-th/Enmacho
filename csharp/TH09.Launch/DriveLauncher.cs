@@ -57,6 +57,51 @@ public static class DriveLauncher
         }
     }
 
+    public static string StartUpdater(UpdaterRequest request)
+    {
+        string source = UpdaterExecutable.Path;
+        if (!File.Exists(source))
+            throw new FileNotFoundException($"{UpdaterExecutable.FileName} がありません", source);
+        string runDir = Path.Combine(Path.GetTempPath(), UpdaterRuns.RunDirPrefix + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(runDir);
+        string copy = Path.Combine(runDir, UpdaterExecutable.FileName);
+        File.Copy(source, copy, overwrite: true);
+
+        var info = new ProcessStartInfo(copy) { UseShellExecute = false, WorkingDirectory = runDir };
+        foreach (string argument in UpdaterArguments(request))
+            info.ArgumentList.Add(argument);
+        using var process = Process.Start(info)
+            ?? throw new InvalidOperationException($"{UpdaterExecutable.FileName} を起動できません");
+        return runDir;
+    }
+
+    public static bool UpdaterExists
+        => File.Exists(UpdaterExecutable.Path);
+    public static IReadOnlyList<string> PreviewUpdaterArguments(UpdaterRequest request)
+        => UpdaterArguments(request);
+
+    private static List<string> UpdaterArguments(UpdaterRequest r)
+    {
+        var args = new List<string> { "--dest", r.DestinationDirectory, "--url", r.ZipUrl };
+        if (r.Sha256 is not null) { args.Add("--sha256"); args.Add(r.Sha256); }
+        args.Add("--relaunch");
+        args.Add(r.ShellExePath);
+        return args;
+    }
+
+    public static void Relaunch(string shellExePath)
+    {
+        if (!string.Equals(Path.GetFileName(shellExePath), ShellExecutable.FileName, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"開き直せるのは {ShellExecutable.FileName} だけです: {shellExePath}", nameof(shellExePath));
+        if (!File.Exists(shellExePath))
+            throw new FileNotFoundException($"{ShellExecutable.FileName} がありません", shellExePath);
+        using var process = Process.Start(new ProcessStartInfo(shellExePath)
+        {
+            UseShellExecute = true,
+            WorkingDirectory = Path.GetDirectoryName(shellExePath) ?? "",
+        });
+    }
+
     public static IReadOnlyList<string> PreviewArguments(LaunchKind kind, LaunchOptions? options = null)
     {
         options ??= LaunchOptions.Default;

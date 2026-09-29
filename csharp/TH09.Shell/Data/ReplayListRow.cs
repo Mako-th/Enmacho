@@ -16,6 +16,8 @@ internal enum OwnSide
     P1 = 1,
 
     P2 = 2,
+
+    Unknown = 3,
 }
 
 internal enum MatchMode
@@ -108,6 +110,8 @@ internal static class ReplayColumns
 
     public const double OwnMarkWidth = 30;
 
+    public const double CheckWidth = 28;
+
     public const double RoundTimesWidth = 172;
 
     public static ReplayColumn[] For(ReplaySection section)
@@ -125,7 +129,7 @@ internal sealed record RoundTime(int? Frames, int? WinnerSide)
     public bool IsP2Win => WinnerSide == 2;
 }
 
-internal sealed class ReplayListRow
+internal sealed class ReplayListRow : System.ComponentModel.INotifyPropertyChanged
 {
     public required long ReplayId { get; init; }
 
@@ -227,6 +231,32 @@ internal sealed class ReplayListRow
     public string KindText => RecordKinds.Text(Kind);
 
     public bool HasNoRounds => Rounds.Count == 0;
+
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    private bool _isChecked;
+
+    public bool IsChecked
+    {
+        get => _isChecked;
+        set
+        {
+            if (_isChecked == value) return;
+            _isChecked = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsChecked)));
+            Toggled?.Invoke(this, value);
+        }
+    }
+
+    public void SetCheckedFromSet(bool value)
+    {
+        if (_isChecked == value) return;
+        _isChecked = value;
+        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsChecked)));
+    }
+
+    public Action<ReplayListRow, bool>? Toggled { get; set; }
 
     public bool IsMatchRow => Section == ReplaySection.Match;
 

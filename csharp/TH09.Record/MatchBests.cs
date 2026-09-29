@@ -49,10 +49,12 @@ public sealed record MatchProgressBests(IReadOnlyDictionary<MatchKey, MatchBestC
 public static class MatchBests
 {
     public static Dictionary<long, MatchSessionInfo> Sessions(
-        SqliteConnection c, IReadOnlyList<string>? names = null, long? onlySid = null)
+        SqliteConnection c, IReadOnlyList<string>? names = null, long? onlySid = null,
+        bool? ignoreCase = null)
     {
         ArgumentNullException.ThrowIfNull(c);
         names ??= SessionSide.OwnReplayNames(c).Names;
+        var ic = ignoreCase ?? SessionSide.IgnoreCaseFromConfig();
         var seats = Seats(c);
         var rc = HasReplayCols(c);
         var cols = rc
@@ -96,7 +98,7 @@ public static class MatchBests
             var (side, own, prov) = SessionSide.Of(ownOverride, ownerSide, p1Name, p2Name, names,
                                                    replayId, p1Control, p2Control,
                                                    seats.TryGetValue(sid, out var seat) ? seat : null,
-                                                   execType);
+                                                   execType, ic);
             long? me = side is null ? null : (side == 1 ? p1Char : p2Char);
             long? foe = side is null ? null : (side == 1 ? p2Char : p1Char);
             outMap[sid] = new MatchSessionInfo(sid, bucket, side, own, prov, me, foe, replayId, diff);

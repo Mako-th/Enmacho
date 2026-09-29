@@ -10,6 +10,7 @@ internal enum DbUpdateCause
     PlayEnded,
     ReplayRegistered,
     HistoryEdited,
+    ReplayEdited,
 }
 
 internal static class DbUpdateCauses
@@ -21,6 +22,7 @@ internal static class DbUpdateCauses
         DbUpdateCause.PlayEnded => "プレイ 1 回ぶんの記録の終了",
         DbUpdateCause.ReplayRegistered => "Replay保存監視の登録",
         DbUpdateCause.HistoryEdited => "履歴の削除・整理",
+        DbUpdateCause.ReplayEdited => "リプレイの所有・削除",
         _ => cause.ToString(),
     };
 }

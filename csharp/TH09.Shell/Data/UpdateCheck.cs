@@ -10,7 +10,7 @@ internal static class UpdateCheck
 
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
-    public static async Task RunAsync(string currentVersion, Action onNotify)
+    public static async Task RunAsync(string currentVersion, Action<UpdateNotice.Offer> onNewer)
     {
         try
         {
@@ -18,8 +18,8 @@ internal static class UpdateCheck
             http.DefaultRequestHeaders.UserAgent.ParseAdd("Enmacho-UpdateCheck");
             using var cts = new CancellationTokenSource(Timeout);
             var json = await http.GetStringAsync(ReleasesLatestUrl, cts.Token).ConfigureAwait(false);
-            if (!UpdateNotice.ShouldNotify(json, currentVersion)) return;
-            Dispatcher.UIThread.Post(onNotify);
+            if (UpdateNotice.Parse(json, currentVersion) is not { } offer) return;
+            Dispatcher.UIThread.Post(() => onNewer(offer));
         }
         catch (Exception ex)
         {

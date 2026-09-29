@@ -55,6 +55,14 @@
       <Setter Property="BorderBrush" Value="{StaticResource Fg}" />
       <Setter Property="Foreground" Value="{StaticResource Fg}" />
     </Style>
+    <Style Selector="CheckBox.rowcheck">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="4,0,0,0" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
     <Style Selector="ListBoxItem">
       <Setter Property="Padding" Value="0" />
       <Setter Property="MinHeight" Value="0" />
@@ -69,6 +77,13 @@
                 Content="Story / Extra" Command="{Binding ShowStoryCommand}" />
         <Button Grid.Column="1" Classes="segment" Classes.on="{Binding IsMatch}"
                 Content="Match" Command="{Binding ShowMatchCommand}" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right"
+                    VerticalAlignment="Center" Margin="0,0,16,6">
+          <TextBlock Name="ReplayCheckedCount" Classes="note" Text="{Binding CheckedCountText}"
+                     VerticalAlignment="Center" />
+          <Button Name="ReplayClearChecks" Content="{x:Static data:ReplayOwnLabels.ClearChecks}"
+                  Command="{Binding ClearChecksCommand}" IsEnabled="{Binding HasChecked}" />
+        </StackPanel>
         <TextBlock Grid.Column="3" Classes="note" Text="{Binding CountText}" VerticalAlignment="Center"
                    Margin="0,0,10,6" />
         <Button Grid.Column="4" Name="ReplayReload" Content="読み直す"
@@ -111,6 +126,12 @@
     <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Rule}"
             Background="{StaticResource Cushion1}" Padding="16,0">
       <StackPanel Name="HeaderRow" Orientation="Horizontal">
+        <Border Width="{x:Static data:ReplayColumns.CheckWidth}">
+          <CheckBox Name="ReplayCheckAll" Classes="rowcheck"
+                    IsChecked="{Binding AllShownChecked, Mode=OneWay}"
+                    Command="{Binding ToggleAllShownCommand}"
+                    ToolTip.Tip="{x:Static data:ReplayOwnLabels.CheckAllTip}" />
+        </Border>
         <Border Width="{x:Static data:ReplayColumns.OwnMarkWidth}" />
         <ItemsControl ItemsSource="{Binding Headers}">
           <ItemsControl.ItemsPanel>
@@ -157,6 +178,21 @@
              Background="Transparent" BorderThickness="0" Padding="16,0">
       <ListBox.ContextFlyout>
         <MenuFlyout>
+          <MenuItem Header="{Binding TargetLineText}" IsEnabled="False" />
+          <MenuItem Header="{Binding DeleteMenuText}" Command="{Binding DeleteCommand}"
+                    IsEnabled="{Binding HasTarget}" />
+          <Separator />
+          <MenuItem Header="{Binding MarkOwnText}" Command="{Binding MarkOwnCommand}"
+                    IsEnabled="{Binding HasTarget}" />
+          <MenuItem Header="{Binding OwnForeignText}" Command="{Binding SetOwnForeignCommand}"
+                    IsEnabled="{Binding HasTarget}" />
+          <MenuItem Header="{Binding OwnAutoText}" Command="{Binding SetOwnAutoCommand}"
+                    IsEnabled="{Binding HasTarget}" />
+          <MenuItem Header="{Binding OwnP1Text}" Command="{Binding SetOwnP1Command}"
+                    IsEnabled="{Binding HasTarget}" />
+          <MenuItem Header="{Binding OwnP2Text}" Command="{Binding SetOwnP2Command}"
+                    IsEnabled="{Binding HasTarget}" />
+          <Separator />
           <MenuItem Header="{x:Static data:ReplayFileLabels.RevealInExplorer}"
                     Click="OnRevealReplayRow"
                     ItemsSource="{Binding RevealOptions}">
@@ -166,19 +202,15 @@
               </Style>
             </MenuItem.Styles>
           </MenuItem>
-          <Separator />
-          <MenuItem Header="{x:Static data:ReplayOwnLabels.Menu}"
-                    IsEnabled="{Binding HasContextRow}">
-            <MenuItem Header="{Binding OwnAutoText}" Command="{Binding SetOwnAutoCommand}" />
-            <MenuItem Header="{Binding OwnForeignText}" Command="{Binding SetOwnForeignCommand}" />
-            <MenuItem Header="{Binding OwnP1Text}" Command="{Binding SetOwnP1Command}" />
-            <MenuItem Header="{Binding OwnP2Text}" Command="{Binding SetOwnP2Command}" />
-          </MenuItem>
         </MenuFlyout>
       </ListBox.ContextFlyout>
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="data:ReplayListRow">
           <StackPanel Orientation="Horizontal">
+
+            <Border Width="{x:Static data:ReplayColumns.CheckWidth}">
+              <CheckBox Classes="rowcheck" IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+            </Border>
 
             <TextBlock Text="{Binding OwnMark}" Width="{x:Static data:ReplayColumns.OwnMarkWidth}"
                        TextAlignment="Center" Margin="0,3"

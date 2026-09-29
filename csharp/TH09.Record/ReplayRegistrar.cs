@@ -35,7 +35,8 @@ public sealed record ReplayRegistration(
     string Source,
     int? OwnerSide,
     long? IsOwn,
-    ReplayLinkResult? Link);
+    ReplayLinkResult? Link,
+    bool Excluded = false);
 
 public sealed class ReplayRegistrar : IDisposable
 {
@@ -58,16 +59,23 @@ public sealed class ReplayRegistrar : IDisposable
 
     private readonly RecordDb _db;
     private readonly Func<string> _now;
+    private readonly IReadOnlyList<string> _ownDirs;
+    private readonly Func<IReadOnlySet<string>>? _excluded;
     private SqliteTransaction? _tx;
     private bool _closed;
 
-    private ReplayRegistrar(RecordDb db, Func<string> now)
+    private ReplayRegistrar(RecordDb db, Func<string> now, IReadOnlyList<string> ownDirs,
+                            Func<IReadOnlySet<string>>? excluded)
     {
         _db = db;
         _now = now;
+        _ownDirs = ownDirs;
+        _excluded = excluded;
     }
 
-    public static ReplayRegistrar Open(string dbPath, Func<string>? now = null)
+    public static ReplayRegistrar Open(string dbPath, Func<string>? now = null,
+                                       IReadOnlyList<string>? ownDirs = null,
+                                       Func<IReadOnlySet<string>>? excluded = null)
     {
         var db = RecordDb.OpenReadWrite(dbPath);
         try
@@ -79,7 +87,7 @@ public sealed class ReplayRegistrar : IDisposable
             db.Dispose();
             throw;
         }
-        return new ReplayRegistrar(db, now ?? ScanLedger.NowIso);
+        return new ReplayRegistrar(db, now ?? ScanLedger.NowIso, ownDirs ?? [], excluded);
     }
 
     public void Dispose()
@@ -99,6 +107,8 @@ public sealed class ReplayRegistrar : IDisposable
         var size = info.Length;
         var mtime = new DateTimeOffset(info.LastWriteTime);
         var sha = Sha256Hex(fullPath);
+        if (_excluded?.Invoke().Contains(sha) == true)
+            return new ReplayRegistration(0, false, false, facts.Source, null, null, null, Excluded: true);
         var t = _now();
 
         _tx = _db.Connection.BeginTransaction();
@@ -228,7 +238,25 @@ public sealed class ReplayRegistrar : IDisposable
         {
             over = null;
         }
-        return over is not null ? (int)over.Value : side;
+        if (over is not null) return (int)over.Value;
+        if (side is null or 0 && _ownDirs.Count > 0 && InOwnDir(replayId))
+            return ReplayStages.HumanSideOf(facts.Mode, facts.DecodedJson) ?? ReplayOwnership.OwnUnknownSide;
+        return side;
+    }
+
+    private bool InOwnDir(long replayId)
+    {
+        using var cmd = Command(
+            $"SELECT {PathRows.FullPath} FROM {PathRows.Table}"
+            + $" WHERE {PathRows.ReplayId}=$0 AND {PathRows.IsCurrent}=1", [replayId]);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            var path = reader.GetString(0);
+            foreach (var dir in _ownDirs)
+                if (Paths.IsUnderDir(dir, path)) return true;
+        }
+        return false;
     }
 
     private ReplayLinkResult? Link(long replayId, DateTimeOffset mtime)

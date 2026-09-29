@@ -174,6 +174,27 @@ internal partial class MainWindow : Window
         }
     }
 
+    private async void OnAddOwnReplayDir(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ShellViewModel shell) return;
+        if (TopLevel.GetTopLevel(this) is not { } top) return;
+        try
+        {
+            var picked = await top.StorageProvider.OpenFolderPickerAsync(
+                new FolderPickerOpenOptions
+                {
+                    Title = "自分のリプレイのフォルダ",
+                    AllowMultiple = true,
+                });
+            foreach (var folder in picked)
+                shell.Drive.Settings.AddOwnReplayDir(folder.TryGetLocalPath());
+        }
+        catch (Exception ex)
+        {
+            Data.LogSource.Error("起動", "フォルダを選べませんでした: " + ex.Message);
+        }
+    }
+
     public byte[] CapturePng()
     {
         var size = new PixelSize(Math.Max(1, (int)Bounds.Width), Math.Max(1, (int)Bounds.Height));

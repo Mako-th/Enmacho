@@ -416,6 +416,7 @@ internal sealed partial class DriveControlViewModel : ObservableObject
     private void OpenSettings()
     {
         Settings.RefreshReplayFolders();
+        Settings.RefreshExcludedReplays();
         IsSettingsFormOpen = true;
     }
 

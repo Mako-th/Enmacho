@@ -43,9 +43,13 @@ public static class ReplayRegistrarDump
         }
 
         string? fixedNow = null;
+        var ownDirs = new List<string>();
+        var excluded = new HashSet<string>(StringComparer.Ordinal);
         foreach (var cells in lines)
         {
             if (cells.Length >= 2 && cells[0] == "now") fixedNow = cells[1];
+            if (cells.Length >= 2 && cells[0] == "owndirs") ownDirs.AddRange(cells.Skip(1));
+            if (cells.Length >= 2 && cells[0] == "excluded") excluded.UnionWith(cells.Skip(1));
         }
 
         Row(w, "fact", "db", Path.GetFullPath(dbPath));
@@ -55,7 +59,8 @@ public static class ReplayRegistrarDump
         Row(w, "fact", "scan_link_method", ScanLink.Method);
 
         using var registrar = ReplayRegistrar.Open(
-            dbPath, fixedNow is null ? null : () => fixedNow);
+            dbPath, fixedNow is null ? null : () => fixedNow,
+            ownDirs: ownDirs, excluded: () => excluded);
         var n = 0;
         foreach (var cells in lines)
         {
@@ -67,6 +72,8 @@ public static class ReplayRegistrarDump
                 switch (verb)
                 {
                     case "now":
+                    case "owndirs":
+                    case "excluded":
                         break;
                     case "register":
                     {
@@ -78,7 +85,8 @@ public static class ReplayRegistrarDump
                             "source=" + r.Source,
                             "owner_side=" + (r.OwnerSide is null ? Nil : Num(r.OwnerSide.Value)),
                             "is_own=" + (r.IsOwn is null ? Nil : Num(r.IsOwn.Value)),
-                            "link=" + LinkText(r.Link));
+                            "link=" + LinkText(r.Link),
+                            "excluded=" + Flag01(r.Excluded));
                         break;
                     }
                     case "sweep":

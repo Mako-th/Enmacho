@@ -70,6 +70,8 @@ internal sealed partial class ShellViewModel : ObservableObject, INavigationHost
         drive.DbUpdated += shell.ReloadForDbUpdate;
         foreach (var history in tabs.OfType<HistoryTabViewModel>())
             history.DbEdited += () => shell.ReloadForDbUpdate(DbUpdateCause.HistoryEdited);
+        foreach (var replay in tabs.OfType<ReplayTabViewModel>())
+            replay.DbEdited += () => shell.ReloadForDbUpdate(DbUpdateCause.ReplayEdited);
         drive.Settings.Adopted += () =>
         {
             if (!OperatingSystem.IsWindows()) return;
@@ -142,6 +144,8 @@ internal sealed partial class ShellViewModel : ObservableObject, INavigationHost
     public NavigationService Navigation { get; }
 
     public IReadOnlyList<TabViewModelBase> Tabs { get; }
+
+    internal ReplayTabViewModel? ReplayTab => Tabs.OfType<ReplayTabViewModel>().FirstOrDefault();
 
     [ObservableProperty]
     public partial TabViewModelBase? SelectedTab { get; set; }

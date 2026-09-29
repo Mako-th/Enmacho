@@ -26,7 +26,8 @@ internal static class StatsDefinitions
         one += p.OwnNames.Count > 0
             ? "  ＝ " + string.Join(" / ", p.OwnNames.Select(
                   x => x.Name + " " + x.Count.ToString("N0", CultureInfo.InvariantCulture)))
-              + "（replays の is_own=1 で側が分かる行の、自分側の名前を数えた。"
+              + "（自分のもの（手で覆した分を含む）で側が分かる行の、自分側の名前を数えた。"
+              + "側が分からない自分のものは数えない。"
               + "表記ゆれは畳まずそのまま突き合わせに使う）"
             : "（replays に名前が無い）";
         if (p.DroppedNames.Count > 0)

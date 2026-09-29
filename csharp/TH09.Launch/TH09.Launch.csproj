@@ -33,6 +33,14 @@
       <Th09DriveExeNameLine Include="{" />
       <Th09DriveExeNameLine Include="    internal const string GeneratedFileName = &quot;$(Th09DriveAssemblyName).exe&quot;%3B" />
       <Th09DriveExeNameLine Include="}" />
+      <Th09DriveExeNameLine Include="internal static partial class UpdaterExecutable" />
+      <Th09DriveExeNameLine Include="{" />
+      <Th09DriveExeNameLine Include="    internal const string GeneratedFileName = &quot;$(Th09UpdateAssemblyName).exe&quot;%3B" />
+      <Th09DriveExeNameLine Include="}" />
+      <Th09DriveExeNameLine Include="internal static partial class ShellExecutable" />
+      <Th09DriveExeNameLine Include="{" />
+      <Th09DriveExeNameLine Include="    internal const string GeneratedFileName = &quot;$(Th09ShellAssemblyName).exe&quot;%3B" />
+      <Th09DriveExeNameLine Include="}" />
     </ItemGroup>
     <WriteLinesToFile File="$(Th09DriveExeNameFile)" Lines="@(Th09DriveExeNameLine)"
                        Overwrite="true" WriteOnlyWhenDifferent="true" />

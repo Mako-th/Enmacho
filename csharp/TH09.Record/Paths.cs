@@ -139,13 +139,69 @@ public sealed class Paths
         return extras.Truthy.TryGetValue(key, out var value) ? value : fallback;
     }
 
+    public bool ReadOwnNameIgnoreCase()
+    {
+        (DateTime, long)? now = null;
+        try
+        {
+            var info = new FileInfo(ConfigPath);
+            if (info.Exists) now = (info.LastWriteTimeUtc, info.Length);
+        }
+        catch (Exception)
+        {
+            now = null;
+        }
+        lock (_ignoreCaseLock)
+        {
+            if (_ignoreCaseSeen is null || _ignoreCaseSeen != now || now is null)
+            {
+                _ignoreCaseValue = ReadTruthyNow(OwnNameIgnoreCaseKey, ConfigStore.OwnNameIgnoreCaseDefault);
+                _ignoreCaseSeen = now;
+            }
+            return _ignoreCaseValue;
+        }
+    }
+
+    private readonly object _ignoreCaseLock = new();
+    private (DateTime, long)? _ignoreCaseSeen;
+    private bool _ignoreCaseValue;
+
+    public IReadOnlyList<string> OwnReplayDirs { get; }
+
+    public static bool IsUnderDir(string dir, string path)
+    {
+        ArgumentNullException.ThrowIfNull(dir);
+        ArgumentNullException.ThrowIfNull(path);
+        string root, full;
+        try
+        {
+            root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(dir));
+            full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+        if (string.Equals(full, root, StringComparison.OrdinalIgnoreCase)) return true;
+        var prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
+        return full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static string ExpandDirText(string raw)
+    {
+        ArgumentNullException.ThrowIfNull(raw);
+        return ExpandUser(Environment.ExpandEnvironmentVariables(raw.Trim()));
+    }
+
     private Paths(string exeDir, PathMode mode, string dataRoot, string configPath,
                   bool configLoaded, string mainDb, bool mainFromConfig,
                   string layer0Db, bool layer0FromConfig,
                   double attachDelaySec, bool attachDelayFromConfig,
-                  int scanSlot, bool scanSlotFromConfig, OwnNameSettings ownNames)
+                  int scanSlot, bool scanSlotFromConfig, OwnNameSettings ownNames,
+                  IReadOnlyList<string> ownReplayDirs)
     {
         OwnNames = ownNames;
+        OwnReplayDirs = ownReplayDirs;
         ExeDir = exeDir;
         Mode = mode;
         DataRoot = dataRoot;
@@ -198,11 +254,14 @@ public sealed class Paths
             Names: extras.Lists.TryGetValue(OwnPlayerNamesKey, out var ownList) ? ownList : null,
             IgnoreCase: extras.Truthy.TryGetValue(OwnNameIgnoreCaseKey, out var ic) ? ic : null,
             Partial: extras.Truthy.TryGetValue(OwnNamePartialMatchKey, out var pt) ? pt : null);
+        IReadOnlyList<string> ownDirs = extras.Lists.TryGetValue(ConfigStore.OwnReplayDirsKey, out var dirList)
+            ? [.. dirList.Where(d => !string.IsNullOrWhiteSpace(d)).Select(ExpandDirText)]
+            : [];
         return new Paths(
             exeDir, mode, dataRoot, configPath, loaded,
             ResolveAgainst(dataRoot, database, MainDbDefault), database is not null,
             ResolveAgainst(dataRoot, layer0, Layer0DbDefault), layer0 is not null,
-            delay, delayOk, slot, slotOk, own);
+            delay, delayOk, slot, slotOk, own, ownDirs);
     }
 
     private static string? FindRepositoryRoot(string start)

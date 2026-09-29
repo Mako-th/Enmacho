@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -39,6 +39,8 @@
     <Th09ShellAssemblyName Condition="'$(Th09Dev)' != 'true'">EnmaCho</Th09ShellAssemblyName>
     <Th09DriveAssemblyName Condition="'$(Th09Dev)' == 'true'">th09_drive</Th09DriveAssemblyName>
     <Th09DriveAssemblyName Condition="'$(Th09Dev)' != 'true'">EnmaCho_drive</Th09DriveAssemblyName>
+    <Th09UpdateAssemblyName Condition="'$(Th09Dev)' == 'true'">th09_update</Th09UpdateAssemblyName>
+    <Th09UpdateAssemblyName Condition="'$(Th09Dev)' != 'true'">EnmaCho_update</Th09UpdateAssemblyName>
   </PropertyGroup>
 
   <PropertyGroup>
