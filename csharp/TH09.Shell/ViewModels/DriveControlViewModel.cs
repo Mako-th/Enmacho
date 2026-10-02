@@ -47,12 +47,12 @@ internal sealed partial class DriveControlViewModel : ObservableObject
     public const string ScanConfirmMessage =
         "進捗は上段に出ます。途中で止めるときは上段の「停止」を押してください。\n\n始めますか？";
 
-    public const string DropFirstConfirmTitle = "控えの空きが足りません";
+    public const string DropFirstConfirmTitle = "バックアップの空きが足りません";
 
     public const string DropFirstConfirmMessageFormat =
-        "控えの置き先の空きが足りません（要 {0} ／ 空き {1}）。前の回の控え（{2} 件 / {3}）を先に消せば入ります。\n\n"
-        + "先に消してから控えを取り、走査を始めますか？\n"
-        + "※控えを取り終えるまでの間、完成した控えが 1 つも無くなります。";
+        "バックアップの置き先の空きが足りません（要 {0} ／ 空き {1}）。前の回のバックアップ（{2} 件 / {3}）を先に消せば入ります。\n\n"
+        + "先に消してからバックアップを取り、走査を始めますか？\n"
+        + "※バックアップを取り終えるまでの間、完成したバックアップが 1 つも無くなります。";
 
     public const string ScanStopsMonitorNote = "監視を止めてから走査します。";
 
@@ -117,6 +117,7 @@ internal sealed partial class DriveControlViewModel : ObservableObject
         {
             Settings.Adopted += ApplyAutoMonitor;
             Settings.Adopted += ApplyWatchSync;
+            Settings.Backups.IsScanRunning = () => IsScanRunning;
         }
         ApplyAutoMonitor();
         Apply(control.Snapshot());
@@ -195,6 +196,11 @@ internal sealed partial class DriveControlViewModel : ObservableObject
 
     [ObservableProperty]
     public partial bool IsScanRunning { get; set; }
+
+    partial void OnIsScanRunningChanged(bool value)
+    {
+        if (OperatingSystem.IsWindows()) Settings.Backups.NotifyScanChanged();
+    }
 
     [ObservableProperty]
     public partial bool CanStartScan { get; set; } = true;
@@ -441,7 +447,7 @@ internal sealed partial class DriveControlViewModel : ObservableObject
         IsDropFirstConfirmOpen = false;
         if (!CanStartScan) return;
         if (lastRealScanSettings is not { } last) return;
-        LogSource.Info(Category, DropFirstConfirmTitle + ": 先に消してから控えを取り、走査を始め直します");
+        LogSource.Info(Category, DropFirstConfirmTitle + ": 先に消してからバックアップを取り、走査を始め直します");
         StartScan(dryRun: false, rerun: last with { DropOldBackupsFirst = true });
     }
 
@@ -449,7 +455,7 @@ internal sealed partial class DriveControlViewModel : ObservableObject
     private void CancelDropFirst()
     {
         IsDropFirstConfirmOpen = false;
-        LogSource.Info(Category, DropFirstConfirmTitle + ": いいえ（旧控えは消していません）");
+        LogSource.Info(Category, DropFirstConfirmTitle + ": いいえ（古いバックアップは消していません）");
     }
 
     [RelayCommand]
@@ -457,6 +463,7 @@ internal sealed partial class DriveControlViewModel : ObservableObject
     {
         Settings.RefreshReplayFolders();
         Settings.RefreshExcludedReplays();
+        Settings.Backups.Refresh();
         IsSettingsFormOpen = true;
     }
 

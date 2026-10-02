@@ -469,17 +469,7 @@ public static class ScanBackup
                       IOPath.GetFullPath(b).TrimEnd(IOPath.DirectorySeparatorChar),
                       StringComparison.OrdinalIgnoreCase);
 
-    public static string Size(long bytes)
-    {
-        if (bytes < 1024) return Num(bytes) + " B";
-        double v = bytes;
-        foreach (var unit in new[] { "KiB", "MiB", "GiB" })
-        {
-            v /= 1024.0;
-            if (v < 1024.0) return ScanTargets.F(v, 1) + " " + unit;
-        }
-        return ScanTargets.F(v / 1024.0, 1) + " TiB";
-    }
+    public static string Size(long bytes) => BackupLayout.Size(bytes);
 
     private static readonly string Lf = ((char)10).ToString();
 

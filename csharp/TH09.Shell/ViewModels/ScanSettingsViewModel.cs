@@ -512,8 +512,8 @@ internal sealed partial class ScanSettingsViewModel : ObservableObject
             "絞り込み: " + (filters.Count > 0 ? string.Join(" ／ ", filters) : NoneText),
             "処理順: " + SelectedOrder.Label,
             "上限: " + (limits.Count > 0 ? string.Join(" ／ ", limits) : NoneText),
-            "走る前の控え: " + (Backup ? "取る" : "取らない")
-                + "／前の回の控え: " + (DropOldBackups ? "消す" : "残す"),
+            "走る前のバックアップ: " + (Backup ? "取る" : "取らない")
+                + "／前の回のバックアップ: " + (DropOldBackups ? "消す" : "残す"),
         };
         if (SelectedRun.Value == ScanRun.ResetScans)
             lines.Add("消えるもの: 走査由来のセッションと走査の作業履歴 ／ 残るもの: " + ResetScansKeepsNote);

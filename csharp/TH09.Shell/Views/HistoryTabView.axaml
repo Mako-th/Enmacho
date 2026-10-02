@@ -84,7 +84,7 @@
                    Margin="0,0,10,6" />
         <Button Grid.Column="6" Name="HistoryPrune" Content="{Binding PruneButtonText}"
                 Command="{Binding RequestPruneCommand}" Margin="0,0,8,6" />
-        <Button Grid.Column="7" Content="読み直す" Command="{Binding ReloadCommand}"
+        <Button Grid.Column="7" Content="リロード" Command="{Binding ReloadCommand}"
                 Margin="0,0,0,6" />
       </Grid>
     </Border>

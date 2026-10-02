@@ -203,10 +203,14 @@ internal sealed partial class AppSettingsViewModel : ObservableObject
             PlayTabItems.Add(new SettingCompareChoice(kind, true));
         }
         foreach (var choice in StreamPanelViewModel.Backgrounds) StreamBackgrounds.Add(choice);
+        Backups = new BackupManagerViewModel(
+            () => AppSettingsSource.HasRedirected ? gamePaths.BackupRoot : Paths.Default.BackupRoot);
         Apply(AppSettingsSource.Current);
     }
 
     internal Paths GamePaths => gamePaths;
+
+    public BackupManagerViewModel Backups { get; }
 
     public event Action? Adopted;
 

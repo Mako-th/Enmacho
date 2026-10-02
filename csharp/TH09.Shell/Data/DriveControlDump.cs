@@ -297,7 +297,7 @@ internal static class DriveControlDump
             bool scanStarted = fake.StartCount(LaunchKind.Scan) == 2
                                && started is { DryRun: false, Run: ScanRun.Rescan, MaxCount: 7 }
                                && !started.Backup
-                               && bar.Scan.Summary().Contains("走る前の控え: 取らない",
+                               && bar.Scan.Summary().Contains("走る前のバックアップ: 取らない",
                                                               StringComparison.Ordinal)
                                && started.Characters.Count == bar.Scan.CharacterChips.Count - 1
                                && !started.Characters.Contains(0)
@@ -968,7 +968,7 @@ internal static class DriveControlDump
             bool openedBeforeExit = bar.IsDropFirstConfirmOpen;
             fake.Last(LaunchKind.Scan).Exit(1);
             bool opened = bar.IsDropFirstConfirmOpen && !openedBeforeExit
-                          && DriveControlViewModel.DropFirstConfirmTitle == "控えの空きが足りません"
+                          && DriveControlViewModel.DropFirstConfirmTitle == "バックアップの空きが足りません"
                           && bar.DropFirstConfirmText.Contains("4.7 GiB", StringComparison.Ordinal)
                           && bar.DropFirstConfirmText.Contains("4.0 GiB", StringComparison.Ordinal)
                           && bar.DropFirstConfirmText.Contains("1 件 / 4.3 GiB", StringComparison.Ordinal);

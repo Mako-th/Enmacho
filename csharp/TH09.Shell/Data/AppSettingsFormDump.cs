@@ -38,6 +38,7 @@ internal static class AppSettingsFormDump
         Row(w, "fact", "config", Path.GetFullPath(path));
         Row(w, "fact", "ops", ops);
         Row(w, "fact", "save-result", form.SaveResultText);
+        Row(w, "fact", "backup-root", form.Backups.Root);
 
         Row(w, "item", Paths.RecordReplayPlaybackKey, Flag01(form.RecordReplayPlayback));
         Row(w, "item", ConfigStore.RecordReplayToggleKeyKey, form.RecordReplayToggleKey);

@@ -76,6 +76,20 @@ internal static class Program
             }
             return Data.AppSettingsFormDump.Run(args[1], args.Length == 3);
         }
+        if (args.Length >= 1 && args[0] == Data.BackupManageDump.Flag)
+        {
+            if (args.Length != 2)
+            {
+                Console.Error.WriteLine("使い方: " + exe + " " + Data.BackupManageDump.Flag + " <偽の根>");
+                return 2;
+            }
+            if (!OperatingSystem.IsWindows())
+            {
+                Console.Error.WriteLine("バックアップの読み書きは Windows でだけ動きます。");
+                return 3;
+            }
+            return Data.BackupManageDump.Run(args[1]);
+        }
         if (args.Length >= 2 && args[0] == Data.AppSettingsFormDump.ToggleKeyFlag)
         {
             if (!OperatingSystem.IsWindows())

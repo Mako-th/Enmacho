@@ -340,9 +340,9 @@
                         IsChecked="{Binding Drive.Scan.OwnOnly}" />
               <CheckBox Name="ScanNoRecurse" Content="フォルダは直下だけ" Margin="0,0,16,0"
                         IsChecked="{Binding Drive.Scan.NoRecurse}" />
-              <CheckBox Name="ScanBackup" Content="走る前に控えを取る" Margin="0,0,16,0"
+              <CheckBox Name="ScanBackup" Content="走る前にバックアップを取る" Margin="0,0,16,0"
                         IsChecked="{Binding Drive.Scan.Backup}" />
-              <CheckBox Name="ScanDropOldBackups" Content="前の回の控えを消す"
+              <CheckBox Name="ScanDropOldBackups" Content="前の回のバックアップを消す"
                         IsChecked="{Binding Drive.Scan.DropOldBackups}" />
             </WrapPanel>
 
@@ -500,8 +500,31 @@
                             Content="監視を ON にしたとき Replay保存監視も一緒に入り切りする"
                             IsChecked="{Binding Drive.Settings.WatchReplaysWithMonitor}" />
                   <CheckBox Name="SetBackupKeepOne"
-                            Content="控えは「完成した 1 つ」だけ残す（未完成の控えは消す）"
+                            Content="バックアップは「完成した 1 つ」だけ残す（未完成のバックアップは消す）"
                             IsChecked="{Binding Drive.Settings.BackupKeepOne}" />
+
+                  <TextBlock Classes="slabel" Text="バックアップ" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <ListBox Grid.Column="0" Name="SetBackupList" Height="90"
+                             ItemsSource="{Binding Drive.Settings.Backups.Rows}"
+                             SelectedIndex="{Binding Drive.Settings.Backups.SelectedIndex}" />
+                    <StackPanel Grid.Column="1" Spacing="6">
+                      <Button Name="SetBackupRemove" Classes="bar" Content="消す" MinWidth="80"
+                              IsEnabled="{Binding Drive.Settings.Backups.CanRemove}"
+                              Command="{Binding Drive.Settings.Backups.RemoveCommand}" />
+                      <Button Name="SetBackupReload" Classes="bar" Content="リロード" MinWidth="80"
+                              Command="{Binding Drive.Settings.Backups.RefreshCommand}" />
+                    </StackPanel>
+                  </Grid>
+                  <TextBlock Name="SetBackupEmpty" Classes="slabel" Text="{Binding Drive.Settings.Backups.EmptyLabel}"
+                             IsVisible="{Binding Drive.Settings.Backups.IsEmpty}" />
+                  <TextBlock Name="SetBackupSummary" Classes="slabel" TextWrapping="Wrap"
+                             Text="{Binding Drive.Settings.Backups.SummaryText}" />
+                  <TextBlock Name="SetBackupBlocked" Classes="slabel" TextWrapping="Wrap"
+                             Text="{Binding Drive.Settings.Backups.BlockedText}"
+                             IsVisible="{Binding Drive.Settings.Backups.HasBlocked}" />
+                  <TextBlock Name="SetBackupResult" Classes="slabel" TextWrapping="Wrap"
+                             Text="{Binding Drive.Settings.Backups.ResultText}" />
 
                   <CheckBox Name="SetAutoImportOnStart"
                             Content="起動時に既存Replay一括登録を流す"
@@ -1038,6 +1061,24 @@
                     Command="{Binding Drive.ConfirmDropFirstCommand}" />
             <Button Name="DropFirstConfirmNo" Content="いいえ" MinWidth="80"
                     Command="{Binding Drive.CancelDropFirstCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border Name="BackupRemoveConfirm" Grid.Row="0" Grid.RowSpan="3"
+            IsVisible="{Binding Drive.Settings.Backups.IsConfirmOpen}" Background="{StaticResource Scrim}">
+      <Border Background="{StaticResource Cushion1}" BorderBrush="{StaticResource Rule}" BorderThickness="1"
+              CornerRadius="4" Padding="20" MaxWidth="560"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Orientation="Vertical" Spacing="12">
+          <TextBlock Text="{Binding Drive.Settings.Backups.ConfirmHeader}" FontWeight="Bold" />
+          <TextBlock Text="{Binding Drive.Settings.Backups.ConfirmText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Name="BackupRemoveConfirmYes" Content="はい" MinWidth="80"
+                    Command="{Binding Drive.Settings.Backups.ConfirmRemoveCommand}" />
+            <Button Name="BackupRemoveConfirmNo" Content="いいえ" MinWidth="80"
+                    Command="{Binding Drive.Settings.Backups.CancelRemoveCommand}" />
           </StackPanel>
         </StackPanel>
       </Border>

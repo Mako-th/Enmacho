@@ -29,20 +29,20 @@ internal partial class App : Application
             if (!TH09.Record.ConfigStore.Load(paths.ConfigPath).BackupKeepOne) return;
             var removed = TH09.Record.BackupLayout.TidyStale(
                 paths.BackupRoot, DateTime.Now,
-                f => Data.LogSource.Info("起動", "未完成の控えを消しました: " + f.Path
-                                                 + "（" + f.Files + " 本 / " + f.Bytes
+                f => Data.LogSource.Info("起動", "未完成のバックアップを消しました: " + f.Path
+                                                 + "（" + "ファイル " + f.Files + " 個 / " + f.Bytes
                                                  + " B ／ 目印なし）"),
                 why => Data.LogSource.Warn("起動", why));
             if (removed.Count > 0)
             {
                 Data.LogSource.Info("起動",
-                    "控えと見做さないもの（未完成）を " + removed.Count + " 件片付けました（合計 "
+                    "バックアップと見做さないもの（未完成）を " + removed.Count + " 件片付けました（合計 "
                     + removed.Sum(r => r.Bytes) + " B）");
             }
         }
         catch (Exception ex)
         {
-            Data.LogSource.Warn("起動", "控えの片付けに失敗しました: " + Data.LogSource.Describe(ex));
+            Data.LogSource.Warn("起動", "バックアップの片付けに失敗しました: " + Data.LogSource.Describe(ex));
         }
     }
 

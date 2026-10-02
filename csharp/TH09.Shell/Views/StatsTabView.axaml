@@ -243,7 +243,7 @@
         </ItemsControl>
         <TextBlock Grid.Column="1" Classes="note" Text="{Binding CountText}" VerticalAlignment="Center"
                    Margin="0,0,10,6" />
-        <Button Grid.Column="2" Name="StatsReload" Content="読み直す"
+        <Button Grid.Column="2" Name="StatsReload" Content="リロード"
                 Command="{Binding ReloadCommand}" Margin="0,0,0,6" />
       </Grid>
     </Border>

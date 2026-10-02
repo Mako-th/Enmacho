@@ -7,6 +7,12 @@ namespace TH09.Record;
 
 public sealed record BackupFolder(string Path, long Bytes, int Files);
 
+public sealed record BackupEntry(BackupFolder Folder, bool Complete);
+
+public sealed record BackupInventory(IReadOnlyList<BackupEntry> Entries, int InProgress);
+
+public sealed record BackupRemoveResult(BackupFolder? Removed, string? Reason);
+
 [SupportedOSPlatform("windows")]
 public static class BackupLayout
 {
@@ -57,7 +63,7 @@ public static class BackupLayout
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                onFailed?.Invoke("未完成の控えを消せませんでした: " + entry
+                onFailed?.Invoke("未完成のバックアップを消せませんでした: " + entry
                                  + "（" + ex.GetType().Name + ": " + ex.Message + "）");
                 continue;
             }
@@ -65,6 +71,55 @@ public static class BackupLayout
             onRemoved?.Invoke(weighed);
         }
         return removed;
+    }
+
+    public static BackupInventory List(string root, DateTime now)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        var entries = new List<BackupEntry>();
+        var inProgress = 0;
+        if (!Directory.Exists(root)) return new BackupInventory(entries, inProgress);
+        foreach (var entry in Directory.EnumerateDirectories(root).Order(StringComparer.Ordinal))
+        {
+            if (IsOwnBackup(root, entry)) entries.Add(new BackupEntry(Weigh(entry), true));
+            else if (IsStaleBackup(root, entry, now)) entries.Add(new BackupEntry(Weigh(entry), false));
+            else if (Shaped(root, entry)) inProgress++;
+        }
+        return new BackupInventory(entries, inProgress);
+    }
+
+    public static bool ScanIsActiveElsewhere() => ScanLedger.ScanIsActive();
+
+    public static BackupRemoveResult Remove(string root, string path, DateTime now)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        ArgumentNullException.ThrowIfNull(path);
+        if (!IsOwnBackup(root, path) && !IsStaleBackup(root, path, now))
+            return new BackupRemoveResult(null, "消してよいバックアップではありません（完成したバックアップでも、"
+                                                + "10 分以上動いていない未完成のバックアップでもありません）: " + path);
+        var weighed = Weigh(path);
+        try
+        {
+            Directory.Delete(IOPath.GetFullPath(path), recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return new BackupRemoveResult(null, "消せませんでした: " + path
+                                                + "（" + ex.GetType().Name + ": " + ex.Message + "）");
+        }
+        return new BackupRemoveResult(weighed, null);
+    }
+
+    public static string Size(long bytes)
+    {
+        if (bytes < 1024) return bytes.ToString(CultureInfo.InvariantCulture) + " B";
+        double v = bytes;
+        foreach (var unit in new[] { "KiB", "MiB", "GiB" })
+        {
+            v /= 1024.0;
+            if (v < 1024.0) return v.ToString("F1", CultureInfo.InvariantCulture) + " " + unit;
+        }
+        return (v / 1024.0).ToString("F1", CultureInfo.InvariantCulture) + " TiB";
     }
 
     public static DateTime LastWrite(string path)
