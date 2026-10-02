@@ -47,6 +47,9 @@ internal static class ScanDestinationDump
         Row(w, "backup", "options_paths_backup_root",
             backupOptions.Paths is { } bp ? Rel(root, bp.BackupRoot) : "(null)");
         Row(w, "backup", "plan_root", Rel(root, backupPlan.Root));
+        Row(w, "backup", "drop_first", backupPlan.DropFirst ? "1" : "0");
+        Row(w, "backup", "removal_forced", backupPlan.RemovalForced ? "1" : "0");
+        Row(w, "backup", "removal_confirmed", backupPlan.RemovalConfirmed ? "1" : "0");
 
         var captureOptions = ScanCommand.CaptureOptions(a, w, _ => { }, paths);
         Row(w, "capture", "options_paths_main_db",
@@ -55,6 +58,8 @@ internal static class ScanDestinationDump
             captureOptions.Paths is { } cp2 ? Rel(root, cp2.Layer0Db) : "(null)");
         Row(w, "capture", "options_paths_backup_root",
             captureOptions.Paths is { } cp3 ? Rel(root, cp3.BackupRoot) : "(null)");
+        Row(w, "capture", "drop_first", captureOptions.DropOldBackupsFirst ? "1" : "0");
+        Row(w, "capture", "removal_forced", captureOptions.RemovalForced ? "1" : "0");
         return 0;
     }
 

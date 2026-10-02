@@ -296,6 +296,9 @@ internal static class DriveControlDump
             var started = fake.LastOptions(LaunchKind.Scan)?.Scan;
             bool scanStarted = fake.StartCount(LaunchKind.Scan) == 2
                                && started is { DryRun: false, Run: ScanRun.Rescan, MaxCount: 7 }
+                               && !started.Backup
+                               && bar.Scan.Summary().Contains("走る前の控え: 取らない",
+                                                              StringComparison.Ordinal)
                                && started.Characters.Count == bar.Scan.CharacterChips.Count - 1
                                && !started.Characters.Contains(0)
                                && !bar.IsScanFormOpen && !bar.IsScanConfirmOpen;
@@ -498,6 +501,8 @@ internal static class DriveControlDump
             bool foldersRequired = FoldersRequiredProbe();
             bool scanDirsPersist = ScanDirsPersistProbe();
             bool scanDirsOutOfRange = OutOfRangeConfirmProbe();
+            bool dropFirstDialog = DropFirstProbe();
+            bool dropFirstLine = DropFirstLineProbe();
 
             Write(stdout, "bar-restore-slots-at-startup", restoreAtStartup);
             WriteText(stdout, "bar-restore-slots-args", restoreArgs);
@@ -553,6 +558,8 @@ internal static class DriveControlDump
             Write(stdout, "bar-folders-required", foldersRequired);
             Write(stdout, "bar-scan-dirs-persist", scanDirsPersist);
             Write(stdout, "bar-scan-dirs-out-of-range", scanDirsOutOfRange);
+            Write(stdout, "bar-scan-drop-first", dropFirstDialog);
+            Write(stdout, "bar-scan-drop-first-line", dropFirstLine);
             stdout.Flush();
             return 0;
         }
@@ -932,6 +939,127 @@ internal static class DriveControlDump
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static bool DropFirstProbe()
+    {
+        var dir = Path.Combine(Path.GetTempPath(),
+                               "th09_shell_drop_first_" + Environment.ProcessId);
+        try
+        {
+            Directory.CreateDirectory(dir);
+            AppSettingsSource.ReadFrom(Path.Combine(dir, "config.json"));
+            var fake = new FakeLauncher();
+            using var shell = ShellViewModel.Create(fake);
+            var bar = shell.Drive;
+            AddDirectoryConfirmed(bar, @"C:\synthetic_gate\replay");
+
+            var offerLine = ScanProgressLines.BackupDropFirstOfferLine("4.7 GiB", "4.0 GiB", 1, "4.3 GiB");
+            const string errorLine = "エラー: 控えの置き先に空きが足りません（要 4.7 GiB / 空き 4.0 GiB）。";
+
+            bar.OpenScanCommand.Execute(null);
+            bar.RequestScanRunCommand.Execute(null);
+            bar.ConfirmScanCommand.Execute(null);
+            var first = fake.LastOptions(LaunchKind.Scan)?.Scan;
+            bool firstHasNoFlag = first is { DropOldBackupsFirst: false, DryRun: false };
+            fake.Last(LaunchKind.Scan).Emit(offerLine);
+            fake.Last(LaunchKind.Scan).Emit(errorLine);
+            bool openedBeforeExit = bar.IsDropFirstConfirmOpen;
+            fake.Last(LaunchKind.Scan).Exit(1);
+            bool opened = bar.IsDropFirstConfirmOpen && !openedBeforeExit
+                          && DriveControlViewModel.DropFirstConfirmTitle == "控えの空きが足りません"
+                          && bar.DropFirstConfirmText.Contains("4.7 GiB", StringComparison.Ordinal)
+                          && bar.DropFirstConfirmText.Contains("4.0 GiB", StringComparison.Ordinal)
+                          && bar.DropFirstConfirmText.Contains("1 件 / 4.3 GiB", StringComparison.Ordinal);
+
+            bar.CancelDropFirstCommand.Execute(null);
+            bool noKeepsQuiet = !bar.IsDropFirstConfirmOpen && fake.StartCount(LaunchKind.Scan) == 1;
+
+            bar.OpenScanCommand.Execute(null);
+            bar.RequestScanRunCommand.Execute(null);
+            bar.ConfirmScanCommand.Execute(null);
+            fake.Last(LaunchKind.Scan).Emit(offerLine);
+            fake.Last(LaunchKind.Scan).Emit(errorLine);
+            fake.Last(LaunchKind.Scan).Exit(1);
+            bool openedAgain = bar.IsDropFirstConfirmOpen && fake.StartCount(LaunchKind.Scan) == 2;
+            var beforeYes = fake.LastOptions(LaunchKind.Scan)?.Scan;
+            bar.ConfirmDropFirstCommand.Execute(null);
+            var afterYes = fake.LastOptions(LaunchKind.Scan)?.Scan;
+            bool yesStarts = !bar.IsDropFirstConfirmOpen && fake.StartCount(LaunchKind.Scan) == 3
+                             && bar.IsScanRunning
+                             && afterYes is { DropOldBackupsFirst: true, DryRun: false }
+                             && beforeYes is not null
+                             && afterYes == (beforeYes with { DropOldBackupsFirst = true });
+
+            fake.Last(LaunchKind.Scan).Emit(errorLine);
+            fake.Last(LaunchKind.Scan).Exit(1);
+            bool noLoop = !bar.IsDropFirstConfirmOpen && fake.StartCount(LaunchKind.Scan) == 3;
+
+            bar.OpenScanCommand.Execute(null);
+            bar.RequestScanRunCommand.Execute(null);
+            bar.ConfirmScanCommand.Execute(null);
+            fake.Last(LaunchKind.Scan).Emit(errorLine);
+            fake.Last(LaunchKind.Scan).Exit(1);
+            bool plainFailure = !bar.IsDropFirstConfirmOpen && fake.StartCount(LaunchKind.Scan) == 4;
+
+            bar.OpenScanCommand.Execute(null);
+            bar.RequestScanRunCommand.Execute(null);
+            bar.ConfirmScanCommand.Execute(null);
+            fake.Last(LaunchKind.Scan).Emit(offerLine);
+            fake.Last(LaunchKind.Scan).Exit(0);
+            bool zeroExit = !bar.IsDropFirstConfirmOpen && fake.StartCount(LaunchKind.Scan) == 5;
+
+            bar.OpenScanCommand.Execute(null);
+            bar.PlanScanCommand.Execute(null);
+            fake.Last(LaunchKind.Scan).Emit(offerLine);
+            fake.Last(LaunchKind.Scan).Exit(1);
+            bool dryRunQuiet = !bar.IsDropFirstConfirmOpen && fake.StartCount(LaunchKind.Scan) == 6
+                               && fake.LastOptions(LaunchKind.Scan)?.Scan is { DryRun: true };
+            bool dryRunKeepsLast = true;
+            bar.OpenScanCommand.Execute(null);
+            bar.RequestScanRunCommand.Execute(null);
+            bar.ConfirmScanCommand.Execute(null);
+            fake.Last(LaunchKind.Scan).Emit(offerLine);
+            fake.Last(LaunchKind.Scan).Exit(1);
+            bar.ConfirmDropFirstCommand.Execute(null);
+            dryRunKeepsLast = fake.LastOptions(LaunchKind.Scan)?.Scan is
+                { DropOldBackupsFirst: true, DryRun: false };
+            fake.Last(LaunchKind.Scan).Exit(0);
+
+            return firstHasNoFlag && opened && noKeepsQuiet && openedAgain && yesStarts && noLoop
+                   && plainFailure && zeroExit && dryRunQuiet && dryRunKeepsLast;
+        }
+        finally
+        {
+            try { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static bool DropFirstLineProbe()
+    {
+        var line = ScanProgressLines.BackupDropFirstOfferLine("4.7 GiB", "4.0 GiB", 3, "12.5 KiB");
+        bool roundTrip = ScanProgressLines.TryParseBackupDropFirstOffer(line, out var o)
+                         && o.Need == "4.7 GiB" && o.Free == "4.0 GiB" && o.OldCount == 3
+                         && o.OldSize == "12.5 KiB";
+        bool stamped = ScanProgressLines.TryParseBackupDropFirstOffer("[22:25:03] " + line, out var s)
+                       && s.OldCount == 3 && s.Need == "4.7 GiB";
+        string[] bad =
+        [
+            "",
+            "エラー: 控えの置き先に空きが足りません（要 4.7 GiB / 空き 4.0 GiB）。",
+            "控え空き不足: 要 4.7 GiB / 空き 4.0 GiB / 旧控え 1 件 4.3 GiB",
+            "控え空き不足: 要  / 空き 4.0 GiB / 旧控え 1 件 4.3 GiB ／ 先に消せば入ります",
+            "控え空き不足: 要 4.7 GiB / 空き  / 旧控え 1 件 4.3 GiB ／ 先に消せば入ります",
+            "控え空き不足: 要 4.7 GiB / 空き 4.0 GiB / 旧控え x 件 4.3 GiB ／ 先に消せば入ります",
+            "控え空き不足: 要 4.7 GiB / 空き 4.0 GiB / 旧控え 1 件  ／ 先に消せば入ります",
+        ];
+        bool negatives = bad.All(b => !ScanProgressLines.TryParseBackupDropFirstOffer(b, out _));
+        bool nullSafe = !ScanProgressLines.TryParseBackupDropFirstOffer(null, out _);
+        return roundTrip && stamped && negatives && nullSafe;
     }
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]

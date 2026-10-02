@@ -19,10 +19,30 @@ internal static class ScanBackupDump
 
     private const string ModeRunForce = "run-force";
 
+    private const string ModeRunFirst = "run-first";
+
+    private const string FreeOption = "--free";
+
+    private const string FreeAfterOption = "--free-after";
+
     private const string ModeLayout = "layout";
 
-    public static int Run(TextWriter w, string[] args)
+    public static int Run(TextWriter w, string[] rawArgs)
     {
+        long? freeOverride = null;
+        long? freeAfterOverride = null;
+        var rest = new List<string>();
+        for (var i = 0; i < rawArgs.Length; i++)
+        {
+            if ((rawArgs[i] == FreeOption || rawArgs[i] == FreeAfterOption) && i + 1 < rawArgs.Length
+                && long.TryParse(rawArgs[i + 1], NumberStyles.Integer, Inv, out var bytes))
+            {
+                if (rawArgs[i] == FreeOption) freeOverride = bytes; else freeAfterOverride = bytes;
+                i++;
+            }
+            else rest.Add(rawArgs[i]);
+        }
+        var args = rest.ToArray();
         if (args.Length != 3 && args.Length != 4)
         {
             Console.Error.WriteLine(
@@ -48,10 +68,11 @@ internal static class ScanBackupDump
             return RunLayout(w, root, File.ReadAllLines(args[3]));
         }
         if (args[2] != ModePlan && args[2] != ModeRun && args[2] != ModeRunYes
-            && args[2] != ModeRunForce)
+            && args[2] != ModeRunForce && args[2] != ModeRunFirst)
         {
             Console.Error.WriteLine("知らないモードです（" + ModePlan + " / " + ModeRun
                                     + " / " + ModeRunYes + " / " + ModeRunForce + " / "
+                                    + ModeRunFirst + " / "
                                     + ModeLayout + "）: " + args[2]);
             return 2;
         }
@@ -88,9 +109,14 @@ internal static class ScanBackupDump
         var confirmed = args[2] is ModeRunYes or ModeRunForce;
         var plan = ScanBackup.Plan(new ScanBackup.Options(
             paths, replays, now,
-            DropOldBackups: confirmed, RemovalForced: args[2] == ModeRunForce));
+            DropOldBackups: confirmed, RemovalForced: args[2] == ModeRunForce,
+            DropOldBackupsFirst: args[2] == ModeRunFirst));
+        if (freeOverride is long forced) plan = plan with { FreeBytes = forced };
+        var freeBefore = plan.FreeBytes;
         Row(w, "plan", "removal_confirmed", plan.RemovalConfirmed ? "1" : "0");
         Row(w, "plan", "removal_forced", plan.RemovalForced ? "1" : "0");
+        Row(w, "plan", "drop_first", plan.DropFirst ? "1" : "0");
+        Row(w, "plan", "free_bytes", Num(plan.FreeBytes));
         Row(w, "plan", "root", Rel(root, plan.Root));
         foreach (var s in plan.Sources)
         {
@@ -112,7 +138,12 @@ internal static class ScanBackupDump
         var body = new StringWriter();
         try
         {
-            if (args[2] != ModePlan) ScanBackup.Run(body, plan);
+            if (args[2] != ModePlan)
+            {
+                ScanBackup.Run(body, plan, _ => freeAfterOverride
+                    ?? freeBefore + plan.Removing.Concat(plan.Stale)
+                                        .Where(r => !Directory.Exists(r.Path)).Sum(r => r.Bytes));
+            }
             else ScanBackup.Describe(body, plan);
         }
         catch (Exception exc)

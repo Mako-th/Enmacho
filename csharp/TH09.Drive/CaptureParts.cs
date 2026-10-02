@@ -82,6 +82,7 @@ public sealed class CaptureParts : IDisposable
         bool Layer0Append = false,
         bool DropOldBackups = false,
         bool RemovalForced = false,
+        bool DropOldBackupsFirst = false,
         AppSettings? Settings = null,
         HitWindowOverrides? HitWindowOverrides = null,
         Action<Layer0Ready, ScanOutcome, Layer0SwapResult>? AfterSwap = null,
@@ -112,7 +113,8 @@ public sealed class CaptureParts : IDisposable
         {
             plan = ScanBackup.Run(w, ScanBackup.Plan(
                 new ScanBackup.Options(paths, replayFiles ?? [], now,
-                                       o.DropOldBackups, o.RemovalForced)));
+                                       o.DropOldBackups, o.RemovalForced,
+                                       o.DropOldBackupsFirst)));
             if (Layer0Swap.BackupIncomplete(plan) is { } why)
                 throw new ScanSetupFailed("エラー: 控えが完成していません（" + why + "）。");
         }

@@ -47,6 +47,13 @@ internal sealed partial class DriveControlViewModel : ObservableObject
     public const string ScanConfirmMessage =
         "進捗は上段に出ます。途中で止めるときは上段の「停止」を押してください。\n\n始めますか？";
 
+    public const string DropFirstConfirmTitle = "控えの空きが足りません";
+
+    public const string DropFirstConfirmMessageFormat =
+        "控えの置き先の空きが足りません（要 {0} ／ 空き {1}）。前の回の控え（{2} 件 / {3}）を先に消せば入ります。\n\n"
+        + "先に消してから控えを取り、走査を始めますか？\n"
+        + "※控えを取り終えるまでの間、完成した控えが 1 つも無くなります。";
+
     public const string ScanStopsMonitorNote = "監視を止めてから走査します。";
 
     public const string ScanStopsMonitorSessionNote = "今のセッション記録が途切れます。";
@@ -75,6 +82,7 @@ internal sealed partial class DriveControlViewModel : ObservableObject
 
     private bool scanSeenRunning;
     private bool pendingScanPlan;
+    private ScanSettings? lastRealScanSettings;
 
     internal event Action<DbUpdateCause>? DbUpdated;
 
@@ -155,6 +163,14 @@ internal sealed partial class DriveControlViewModel : ObservableObject
 
     [ObservableProperty]
     public partial string LastResultText { get; set; } = "";
+
+    [ObservableProperty]
+    public partial bool IsDropFirstConfirmOpen { get; set; }
+
+    [ObservableProperty]
+    public partial string DropFirstConfirmText { get; set; } = "";
+
+    public string DropFirstConfirmHeader => DropFirstConfirmTitle;
 
     public string ImportConfirmText => ImportConfirmMessage;
 
@@ -412,6 +428,30 @@ internal sealed partial class DriveControlViewModel : ObservableObject
         StartScan(dryRun: false);
     }
 
+    private void OfferDropFirst(ScanProgressLines.BackupDropFirstOffer offer)
+    {
+        DropFirstConfirmText = string.Format(DropFirstConfirmMessageFormat,
+                                             offer.Need, offer.Free, Num(offer.OldCount), offer.OldSize);
+        IsDropFirstConfirmOpen = true;
+    }
+
+    [RelayCommand]
+    private void ConfirmDropFirst()
+    {
+        IsDropFirstConfirmOpen = false;
+        if (!CanStartScan) return;
+        if (lastRealScanSettings is not { } last) return;
+        LogSource.Info(Category, DropFirstConfirmTitle + ": 先に消してから控えを取り、走査を始め直します");
+        StartScan(dryRun: false, rerun: last with { DropOldBackupsFirst = true });
+    }
+
+    [RelayCommand]
+    private void CancelDropFirst()
+    {
+        IsDropFirstConfirmOpen = false;
+        LogSource.Info(Category, DropFirstConfirmTitle + ": いいえ（旧控えは消していません）");
+    }
+
     [RelayCommand]
     private void OpenSettings()
     {
@@ -573,30 +613,11 @@ internal sealed partial class DriveControlViewModel : ObservableObject
     }
 
 
-    private void StartScan(bool dryRun)
+    private void StartScan(bool dryRun, ScanSettings? rerun = null)
     {
-        if (Scan.Directories.Count == 0)
-        {
-            failureText = NameOf(LaunchKind.Scan) + ": " + NoFoldersSelectedMessage;
-            LastResultText = failureText;
-            if (dryRun) ShowScanPlan(null, NoFoldersSelectedMessage);
-            return;
-        }
-        if (FoldersOutOfRangeReason() is { } outOfRangeReason)
-        {
-            failureText = NameOf(LaunchKind.Scan) + ": " + outOfRangeReason;
-            LastResultText = failureText;
-            if (dryRun) ShowScanPlan(null, outOfRangeReason);
-            return;
-        }
-        if (!Scan.TryBuild(dryRun, out var settings, out string error))
-        {
-            LogSource.Error(Category, NameOf(LaunchKind.Scan) + ": " + error);
-            failureText = NameOf(LaunchKind.Scan) + ": " + error;
-            LastResultText = failureText;
-            if (dryRun) ShowScanPlan(null, error);
-            return;
-        }
+        ScanSettings settings;
+        if (rerun is { } same) settings = same;
+        else if (!TryBuildScanSettings(dryRun, out settings)) return;
         if (!dryRun && IsMonitorRunning)
         {
             if (!control.Stop(LaunchKind.Monitor))
@@ -630,9 +651,39 @@ internal sealed partial class DriveControlViewModel : ObservableObject
         }
         else
         {
+            lastRealScanSettings = settings with { DropOldBackupsFirst = false };
             IsScanFormOpen = false;
             navigation.TryShowTab(ShellTab.Log);
         }
+    }
+
+    private bool TryBuildScanSettings(bool dryRun, out ScanSettings settings)
+    {
+        settings = ScanSettings.Default;
+        if (Scan.Directories.Count == 0)
+        {
+            failureText = NameOf(LaunchKind.Scan) + ": " + NoFoldersSelectedMessage;
+            LastResultText = failureText;
+            if (dryRun) ShowScanPlan(null, NoFoldersSelectedMessage);
+            return false;
+        }
+        if (FoldersOutOfRangeReason() is { } outOfRangeReason)
+        {
+            failureText = NameOf(LaunchKind.Scan) + ": " + outOfRangeReason;
+            LastResultText = failureText;
+            if (dryRun) ShowScanPlan(null, outOfRangeReason);
+            return false;
+        }
+        if (!Scan.TryBuild(dryRun, out var built, out string error))
+        {
+            LogSource.Error(Category, NameOf(LaunchKind.Scan) + ": " + error);
+            failureText = NameOf(LaunchKind.Scan) + ": " + error;
+            LastResultText = failureText;
+            if (dryRun) ShowScanPlan(null, error);
+            return false;
+        }
+        settings = built!;
+        return true;
     }
 
     private void ShowScanPlan(ScanProgressLines.ScanPlanSummary? plan, string? failureText)
@@ -740,6 +791,10 @@ internal sealed partial class DriveControlViewModel : ObservableObject
                 if (IsMonitorAuto && autoStartAllowed && !snapshot[LaunchKind.Monitor].IsRunning)
                     Dispatcher.UIThread.Post(StartAutoMonitor);
             }
+            if (!pendingScanPlan && scanState.LastDropFirstOffer is { } offer
+                && !scanState.StoppedIntentionally
+                && scanState.LastExitCode is int offerExit && offerExit != 0)
+                OfferDropFirst(offer);
             if (pendingScanPlan)
             {
                 pendingScanPlan = false;

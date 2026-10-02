@@ -60,6 +60,7 @@ internal static class ScanArgsDump
                 }),
                 ("hit-window-default", LaunchKind.Scan, ScanSettings.Default),
                 ("mtime", LaunchKind.Scan, ScanSettings.Default with { Order = ScanOrder.Mtime }),
+                ("drop-first", LaunchKind.Scan, ScanSettings.Default with { DropOldBackupsFirst = true }),
                 ("story", LaunchKind.Scan, ScanSettings.Default with { Modes = [ScanMode.Story] }),
                 ("extra", LaunchKind.Scan, ScanSettings.Default with { Modes = [ScanMode.Extra] }),
                 ("modes", LaunchKind.Scan,

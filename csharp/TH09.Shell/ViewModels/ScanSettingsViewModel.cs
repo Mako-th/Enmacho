@@ -164,7 +164,7 @@ internal sealed partial class ScanSettingsViewModel : ObservableObject
     public partial string MinRecordVersionText { get; set; } = "";
 
     [ObservableProperty]
-    public partial bool Backup { get; set; } = true;
+    public partial bool Backup { get; set; }
 
     [ObservableProperty]
     public partial bool DropOldBackups { get; set; }

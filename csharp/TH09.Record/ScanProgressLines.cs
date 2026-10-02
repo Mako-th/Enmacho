@@ -202,6 +202,48 @@ public static class ScanProgressLines
         return true;
     }
 
+    public readonly record struct BackupDropFirstOffer(string Need, string Free, int OldCount,
+                                                       string OldSize);
+
+    public const string BackupDropFirstOfferPrefix = "控え空き不足: 要 ";
+    private const string BackupDropFirstNeedToFree = " / 空き ";
+    private const string BackupDropFirstFreeToCount = " / 旧控え ";
+    private const string BackupDropFirstCountToSize = " 件 ";
+    private const string BackupDropFirstSuffix = " ／ 先に消せば入ります";
+
+    public static string BackupDropFirstOfferLine(string need, string free, int oldCount,
+                                                  string oldSize)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(need);
+        ArgumentException.ThrowIfNullOrEmpty(free);
+        ArgumentException.ThrowIfNullOrEmpty(oldSize);
+        return BackupDropFirstOfferPrefix + need + BackupDropFirstNeedToFree + free
+             + BackupDropFirstFreeToCount + Num(oldCount) + BackupDropFirstCountToSize + oldSize
+             + BackupDropFirstSuffix;
+    }
+
+    public static bool TryParseBackupDropFirstOffer(string? line, out BackupDropFirstOffer offer)
+    {
+        offer = default;
+        if (string.IsNullOrEmpty(line)) return false;
+        var text = StripTimestamp(line);
+        if (!text.StartsWith(BackupDropFirstOfferPrefix, StringComparison.Ordinal)) return false;
+        if (!text.EndsWith(BackupDropFirstSuffix, StringComparison.Ordinal)) return false;
+        var body = text[BackupDropFirstOfferPrefix.Length..^BackupDropFirstSuffix.Length];
+        var freeAt = body.IndexOf(BackupDropFirstNeedToFree, StringComparison.Ordinal);
+        if (freeAt <= 0) return false;
+        var need = body[..freeAt];
+        body = body[(freeAt + BackupDropFirstNeedToFree.Length)..];
+        var countAt = body.IndexOf(BackupDropFirstFreeToCount, StringComparison.Ordinal);
+        if (countAt <= 0) return false;
+        var free = body[..countAt];
+        body = body[(countAt + BackupDropFirstFreeToCount.Length)..];
+        if (!TryCutInt(ref body, BackupDropFirstCountToSize, out var count)) return false;
+        if (body.Length == 0) return false;
+        offer = new BackupDropFirstOffer(need, free, count, body);
+        return true;
+    }
+
     public const string StopReasonPrefix = "停止理由: ";
 
     public static string StopReasonLine(string reason) => StopReasonPrefix + reason;

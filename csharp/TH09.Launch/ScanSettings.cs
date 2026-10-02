@@ -79,6 +79,7 @@ internal static class DriveFlags
     internal const string MinRecordVersion = "--min-record-version";
     internal const string NoBackup = "--no-backup";
     internal const string DropOldBackups = "--drop-old-backups";
+    internal const string DropOldBackupsFirst = "--drop-old-backups-first";
 
     internal const string HitWindows = "--hit-windows";
     internal const string HitWindowBefore = "--hit-window-before";
@@ -149,6 +150,8 @@ public sealed record ScanSettings
     public bool Backup { get; init; } = true;
 
     public bool DropOldBackups { get; init; }
+
+    public bool DropOldBackupsFirst { get; init; }
 
     public bool DryRun { get; init; }
 
@@ -273,6 +276,7 @@ public sealed record ScanSettings
         }
         if (!Backup) argv.Add(DriveFlags.NoBackup);
         if (DropOldBackups) argv.Add(DriveFlags.DropOldBackups);
+        if (DropOldBackupsFirst) argv.Add(DriveFlags.DropOldBackupsFirst);
         if (HitWindows is bool windows)
         {
             argv.Add(DriveFlags.HitWindows);

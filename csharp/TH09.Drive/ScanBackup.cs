@@ -16,7 +16,8 @@ public sealed record BackupPlan(string Root, IReadOnlyList<BackupSource> Sources
                                 IReadOnlyList<string> Kept,
                                 string Destination, bool DestinationExists,
                                 bool RemovalConfirmed,
-                                IReadOnlyList<BackupRemoval> Stale, bool RemovalForced)
+                                IReadOnlyList<BackupRemoval> Stale, bool RemovalForced,
+                                bool DropFirst = false)
 {
     public long RemovingBytes => Removing.Sum(r => r.Bytes);
 
@@ -64,6 +65,17 @@ public static class ScanBackup
     public const string KeepOldBackupsHelp =
         "前の回の控えを消さない（★設定 " + ConfigStore.BackupKeepOneKey + " をこの回だけ切る）";
 
+    public const string DropOldBackupsFirstFlag = "--drop-old-backups-first";
+
+    public const string DropOldBackupsFirstHelp =
+        "控えの置き先の空きが足りないとき、前の回の控えを先に消してから控えを取る"
+        + "（★空きが足りて入る回・先に消しても入らない回・縮んでいる回では何も消さない）";
+
+    public const string DroppedFirstNote =
+        "★空きが足りないので、旧控えを先に消してから控えを取ります（" + DropOldBackupsFirstFlag + "）";
+
+    public const string DropFirstRefused = "★旧控えは先に消しません（" + DropOldBackupsFirstFlag + "）: ";
+
     public const int StaleGraceMinutes = BackupLayout.StaleGraceMinutes;
 
     public static bool IsStaleBackup(string root, string path, DateTime now)
@@ -74,7 +86,7 @@ public static class ScanBackup
 
     public sealed record Options(Paths? Paths = null, IReadOnlyList<string>? ReplayFiles = null,
                                  DateTime? Now = null, bool DropOldBackups = false,
-                                 bool RemovalForced = false);
+                                 bool RemovalForced = false, bool DropOldBackupsFirst = false);
 
     public static BackupPlan Plan(Options o)
     {
@@ -94,7 +106,7 @@ public static class ScanBackup
         return new BackupPlan(here, sources, sources.Sum(s => s.Bytes), FreeBytes(root),
                               removing, kept,
                               paths.Layer0Db, File.Exists(paths.Layer0Db),
-                              o.DropOldBackups, stale, o.RemovalForced);
+                              o.DropOldBackups, stale, o.RemovalForced, o.DropOldBackupsFirst);
     }
 
     public static void Describe(TextWriter w, BackupPlan plan)
@@ -146,16 +158,40 @@ public static class ScanBackup
         w.Write(rule + "\n");
     }
 
-    public static BackupPlan Run(TextWriter w, BackupPlan plan)
+    public static BackupPlan Run(TextWriter w, BackupPlan plan, Func<string, long>? measureFree = null)
     {
         ArgumentNullException.ThrowIfNull(w);
         ArgumentNullException.ThrowIfNull(plan);
         Describe(w, plan);
         if (plan.FreeBytes >= 0 && plan.FreeBytes < plan.Bytes)
         {
-            throw new ScanSetupFailed(
-                "エラー: 控えの置き先に空きが足りません（要 " + Size(plan.Bytes)
-                + " / 空き " + Size(plan.FreeBytes) + "）。");
+            var reclaim = plan.RemovingBytes + plan.StaleBytes;
+            var fitsAfterDrop = plan.FreeBytes + reclaim >= plan.Bytes;
+            var shrinking = Shrinking(plan.Bytes, plan.RemovingBytes);
+            if (!plan.DropFirst)
+            {
+                if (fitsAfterDrop && !shrinking)
+                {
+                    w.Write(ScanProgressLines.BackupDropFirstOfferLine(
+                                Size(plan.Bytes), Size(plan.FreeBytes),
+                                plan.Removing.Count + plan.Stale.Count, Size(reclaim)) + Lf);
+                }
+                throw SpaceShort(plan.Bytes, plan.FreeBytes);
+            }
+            if (!fitsAfterDrop || shrinking)
+            {
+                w.Write(DropFirstRefused
+                        + (shrinking ? "いま取る控えの方が極端に小さいため"
+                                     : "先に消しても空きが足りないため") + Lf);
+                throw SpaceShort(plan.Bytes, plan.FreeBytes);
+            }
+            w.Write(DroppedFirstNote + Lf);
+            var dropRoot = IOPath.GetDirectoryName(plan.Root)!;
+            DropStale(w, dropRoot);
+            DropRemoving(w, plan, dropRoot);
+            plan = plan with { Removing = [], Stale = [] };
+            var free = (measureFree ?? FreeBytes)(dropRoot);
+            if (free >= 0 && free < plan.Bytes) throw SpaceShort(plan.Bytes, free);
         }
 
         foreach (var s in plan.Sources)
@@ -211,17 +247,29 @@ public static class ScanBackup
             return plan;
         }
         var root = IOPath.GetDirectoryName(plan.Root)!;
-        BackupLayout.TidyStale(
-            root, DateTime.Now,
-            f => w.Write("未完成の控えを消しました: " + f.Path
-                         + "（" + Num(f.Files) + " 本 / " + Size(f.Bytes) + " ／ 目印なし）" + Lf),
-            why => w.Write("★" + why + Lf));
+        DropStale(w, root);
         if (Shrinking(taken, plan.RemovingBytes) && !plan.RemovalForced && plan.Removing.Count > 0)
         {
             w.Write(ShrinkKeep + ": " + Num(plan.Removing.Count) + " 件 / "
                     + Size(plan.RemovingBytes) + "\n");
             return plan;
         }
+        DropRemoving(w, plan, root);
+        return plan;
+    }
+
+    private static ScanSetupFailed SpaceShort(long need, long free) =>
+        new("エラー: 控えの置き先に空きが足りません（要 " + Size(need) + " / 空き " + Size(free) + "）。");
+
+    private static void DropStale(TextWriter w, string root) =>
+        BackupLayout.TidyStale(
+            root, DateTime.Now,
+            f => w.Write("未完成の控えを消しました: " + f.Path
+                         + "（" + Num(f.Files) + " 本 / " + Size(f.Bytes) + " ／ 目印なし）" + Lf),
+            why => w.Write("★" + why + Lf));
+
+    private static void DropRemoving(TextWriter w, BackupPlan plan, string root)
+    {
         foreach (var r in plan.Removing)
         {
             if (!IsOwnBackup(root, r.Path) || SamePath(r.Path, plan.Root))
@@ -232,7 +280,6 @@ public static class ScanBackup
             Directory.Delete(r.Path, recursive: true);
             w.Write("旧控えを消しました: " + r.Path + "（" + Size(r.Bytes) + "）\n");
         }
-        return plan;
     }
 
     public static string? BlockedByExistingLayer0(Paths? paths)

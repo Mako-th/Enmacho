@@ -50,6 +50,7 @@ public sealed record ScanArgs(
     bool DropOldBackups = false,
     bool KeepOldBackups = false,
     bool RemovalForced = false,
+    bool DropOldBackupsFirst = false,
     bool? HitWindows = null,
     int? HitWindowBefore = null,
     int? HitWindowAfter = null,
@@ -79,6 +80,7 @@ public static class ScanCommand
             Emptying: a.Run is ScanRunMode.ResetAll,
             DropOldBackups: a.DropOldBackups,
             RemovalForced: a.RemovalForced,
+            DropOldBackupsFirst: a.DropOldBackupsFirst,
             HitWindowOverrides: HitWindowFlags(a),
             AfterSwap: (ready, outcome, swap) => RebuildLayer1(w, a, ready, outcome, swap, log),
             Layer0WriteEncoding: SolidBrotli.EncodingV2);
@@ -198,6 +200,8 @@ public static class ScanCommand
                     NoValue(); a = a with { DropOldBackups = true, RemovalForced = true }; break;
                 case ScanBackup.KeepOldBackupsFlag:
                     NoValue(); a = a with { KeepOldBackups = true }; break;
+                case ScanBackup.DropOldBackupsFirstFlag:
+                    NoValue(); a = a with { DropOldBackupsFirst = true }; break;
                 default:
                     throw new ScanUsageError("知らない引数です: " + argv[i]);
             }
@@ -467,7 +471,7 @@ public static class ScanCommand
     internal static ScanBackup.Options BackupOptions(ScanArgs a, IReadOnlyList<string> replayFiles,
                                                       Paths paths) =>
         new(paths, ReplayFiles: replayFiles, DropOldBackups: a.DropOldBackups,
-            RemovalForced: a.RemovalForced);
+            RemovalForced: a.RemovalForced, DropOldBackupsFirst: a.DropOldBackupsFirst);
 
     private static (int? Code, ScanArgs Args) RunReset(TextWriter w, ScanArgs a, ScanRunPlan plan,
                                                         Paths paths, Action<string> log)
@@ -486,7 +490,8 @@ public static class ScanCommand
                 var backupPlan = ScanBackup.Run(w, ScanBackup.Plan(new ScanBackup.Options(
                     paths, Repository.CurrentReplayFiles(conn, paths),
                     DropOldBackups: a.DropOldBackups,
-                    RemovalForced: a.RemovalForced)));
+                    RemovalForced: a.RemovalForced,
+                    DropOldBackupsFirst: a.DropOldBackupsFirst)));
                 if (Layer0Swap.BackupIncomplete(backupPlan) is { } why)
                     throw new ScanSetupFailed("エラー: 控えが完成していません（" + why + "）。");
             }
@@ -573,6 +578,9 @@ public static class ScanCommand
         ★既定は設定 backup_keep_one（既定オン）なので、ふだんは書かなくても消えます。
         ★この旗を書いた回だけ「縮んでいても消す」まで通ります）
         --keep-old-backups（前の回の控えを消さない。★設定をこの回だけ切ります）
+        --drop-old-backups-first（控えの置き先の空きが足りないとき、前の回の控えを先に消してから
+        控えを取る。★空きが足りて入る回・先に消しても入らない回・縮んでいる回では何も消しません。
+        ★走査の器が「空きが足りません」の確認で「はい」を押したときに付ける旗です）
         ★控えは既定で「完成した 1 つ」だけになります ——★未完成の控え（目印の無いフォルダ）は
         ★控えと見做さずに消します（★10 分以上そのままのものだけ。書きかけは触りません）
   印:  --stamp-layer0（いま生きている Layer 0 に「書き足してよい」の印を押す。

@@ -11,7 +11,8 @@ internal sealed record DriveProcessState(LaunchKind Kind, bool IsRunning, bool C
                                          ScanProgressLines.ScanPlanSummary? LastScanPlan = null,
                                          ScanProgressLines.BatchOutcome? LastScanBatchResult = null,
                                          string? LastScanStopReason = null,
-                                         int WatchRegisteredTotal = 0);
+                                         int WatchRegisteredTotal = 0,
+                                         ScanProgressLines.BackupDropFirstOffer? LastDropFirstOffer = null);
 
 internal sealed record DriveControlSnapshot(bool IsDisposed, IReadOnlyList<DriveProcessState> Processes)
 {
@@ -34,6 +35,7 @@ internal sealed class DriveProcessController : IDisposable
     private readonly Dictionary<LaunchKind, ScanProgressLines.ScanPlanSummary?> scanPlans = [];
     private readonly Dictionary<LaunchKind, ScanProgressLines.BatchOutcome?> scanBatchResults = [];
     private readonly Dictionary<LaunchKind, string?> scanStopReasons = [];
+    private readonly Dictionary<LaunchKind, ScanProgressLines.BackupDropFirstOffer?> dropFirstOffers = [];
     private readonly Dictionary<LaunchKind, int> watchRegisteredTotals = [];
     private bool disposed;
 
@@ -77,6 +79,7 @@ internal sealed class DriveProcessController : IDisposable
                     scanPlans[kind] = null;
                     scanBatchResults[kind] = null;
                     scanStopReasons[kind] = null;
+                    dropFirstOffers[kind] = null;
                     break;
                 }
             }
@@ -169,6 +172,11 @@ internal sealed class DriveProcessController : IDisposable
                 scanStopReasons[kind] = stopReason;
                 changed = true;
             }
+            if (DropFirstOffer(line) is { } dropFirst)
+            {
+                dropFirstOffers[kind] = dropFirst;
+                changed = true;
+            }
             if (IsWatchRegistered(line))
             {
                 watchRegisteredTotals.TryGetValue(kind, out var total);
@@ -210,6 +218,12 @@ internal sealed class DriveProcessController : IDisposable
     private static string? StopReason(string line)
         => OperatingSystem.IsWindows() && ScanProgressLines.TryParseStopReason(line, out var reason)
             ? reason
+            : null;
+
+    private static ScanProgressLines.BackupDropFirstOffer? DropFirstOffer(string line)
+        => OperatingSystem.IsWindows()
+           && ScanProgressLines.TryParseBackupDropFirstOffer(line, out var offer)
+            ? offer
             : null;
 
     private void ReceiveExit(LaunchKind kind, RunningChild child) => Complete(kind, child);
@@ -273,12 +287,13 @@ internal sealed class DriveProcessController : IDisposable
             scanPlans.TryGetValue(kind, out var scanPlan);
             scanBatchResults.TryGetValue(kind, out var scanBatchResult);
             scanStopReasons.TryGetValue(kind, out var scanStopReason);
+            dropFirstOffers.TryGetValue(kind, out var dropFirstOffer);
             watchRegisteredTotals.TryGetValue(kind, out var watchRegistered);
             states[(int)kind] = new DriveProcessState(kind, running, !disposed && !running, code,
                                                      failureLine, intended, running && open, notice,
                                                      running ? progress : null, importResult,
                                                      scanPlan, scanBatchResult, scanStopReason,
-                                                     watchRegistered);
+                                                     watchRegistered, dropFirstOffer);
         }
         return new DriveControlSnapshot(disposed, states);
     }
